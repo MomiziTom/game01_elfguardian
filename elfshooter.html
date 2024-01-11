@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>elfshooter</title>
+		<script>
+			let mouseX = 0;
+			let mouseY = 0;
+			let archerX = 0;
+			let archerY = 480;
+			let alpha = 0.3;
+			let aimCircle = 30;
+			let clicknow = false;
+			let shootnow = false;
+			const gravity = 1;
+			let fps = setInterval(gameloop,(1/30)*1000);
+
+			class arrow{
+				constructor(ctx2d){
+					this.angle = 0.0;
+					this.aimX = 0;
+					this.aimY = 0;
+					this.power = 0;
+					this.speedX = 1;    //暫定的な値
+					this.speedY = 1;
+					this.previousX = 0;
+					this.previousY = 0;
+					this.currentX = 0;
+					this.currentY = 0;
+					this.shotornot = false;
+				}
+				shoot(x,y,ox,oy,pow){
+					this.angle = Math.atan2((y - oy),(x - ox));
+					this.aimX = x;
+					this.aimY = y;
+					this.power = pow;
+					this.speedX = 2;    //暫定処理
+					this.speedY = -2;
+					this.previousX = this.archerX;
+					this.previousY = this.archerY;
+					this.currentX = this.archerX;
+					this.currentY = this.archerY;
+					this.shotornot = true;
+
+				}
+				move(){
+					if(this.shotornot == true){
+
+						this.previousX = this.currentX;
+						this.previousY = this.currentY;
+						this.currentX +=this.speedX;
+						this.currentY +=this.speedY + gravity;
+					}
+				}
+			}
+
+
+
+			function gameloop(){
+				let field = document.getElementById("field");
+				let ctx = field.getContext("2d");
+				let shot = new arrow();
+
+				ctx.clearRect(0,0,640,480);
+
+				document.getElementById("field").addEventListener("mousemove",function(event){
+					mouseX = event.offsetX;
+					mouseY = event.offsetY;
+					}
+				);
+				document.getElementById("field").addEventListener("mousedown",function(){
+					clicknow = true;
+				});
+				document.getElementById("field").addEventListener("mouseup",function(){
+					clicknow = false;
+					shootnow = true;
+				});
+				if(clicknow == true){
+					//照準表示描画<
+					ctx.strokeStyle = "#000000";
+					ctx.globalAlpha = alpha;    //照準表示の不透明度
+					ctx.lineWidth = aimCircle;  //照準表示の大きさ
+					ctx.lineCap = "round";
+					ctx.beginPath();
+					ctx.moveTo(mouseX,mouseY);
+					ctx.lineTo(mouseX,mouseY);
+					ctx.stroke();
+					//照準表示描画>
+
+					//照準の不透明度、大きさの変化<
+					alpha +=0.01;
+					aimCircle += 1;
+					alpha %=0.4;
+					aimCircle %=40;
+					//照準の不透明度、大きさの変化>
+				}
+				if(shootnow == true){
+
+					shot.shoot(mouseX,mouseY,archerX,archerY,1);    //powの値１は暫定的な値
+					shootnow= false;
+				}
+
+				shot.move();
+
+				document.getElementById("spantag").textContent = (`${mouseX}  ${mouseY}`);
+			}
+
+
+		</script>
+	</head>
+
+	<body>
+		<canvas id="field" width="640" height="480"></canvas>
+		<span id="spantag"></span>
+		<img src="主人公シャラライメージ.png" style="display: none;">
+
+	</body>
+</html>
+
+<!--キャラクター名
+	主人公　：　シャララ
+	主人公の妹　：　ルーヤ--> 
