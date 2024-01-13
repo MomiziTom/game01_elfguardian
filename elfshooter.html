@@ -4,6 +4,8 @@
 		<meta charset="UTF-8">
 		<title>elfshooter</title>
 		<script>
+			let canvasW = 1800;
+			let canvasH = 600;
 			let mouseX = 0;		//マウス位置
 			let mouseY = 0;
 			let archerX = 0;	//射手位置
@@ -13,8 +15,8 @@
 			let clicknow = false;
 			let shootnow = false;
 			let charge = 0;
-			let chargevalue = 5;
-			const gravity = 1;
+			let chargevalue = 0;
+			const gravity = 2;
 			let fps = setInterval(gameloop,(1/30)*1000);
 
 			class arrow{
@@ -47,7 +49,7 @@
 				}
 				move(){
 					if(this.shotornot == true){
-
+						this.angle = Math.atan2((this.currentY - this.previousY),(this.currentX - this.previousX));//マイナスラジアンで上向き。右方向水平で0ラジアン。プラスラジアンで下向き。左方向水平でπ(3.1415...)
 						this.previousX = this.currentX;
 						this.previousY = this.currentY;
 						this.currentX +=this.speedX;
@@ -84,9 +86,10 @@
 					}
 				);
 				if(clicknow == true){
-					charge += chargevalue;
-					if(charge >= 200){
-						charge = 200;
+					++chargevalue;
+					charge = chargevalue * chargevalue * 0.3;
+					if(charge >= 300){
+						charge = 300;
 					}
 
 					//照準の不透明度、大きさの変化<
@@ -98,6 +101,7 @@
 
 					shot.shoot(mouseX,mouseY,archerX,archerY,charge);    //powの値１は暫定的な値
 					charge = 0;
+					chargevalue = 0;
 					alpha = 0.3;
 					aimCircle = 30;
 
@@ -112,10 +116,12 @@
 				//計算結果画面描画領域----------------------------------------------------------<
 
 				let field = document.getElementById("field");
+				field.width = canvasW;
+				field.height = canvasH;
 				let ctx = field.getContext("2d");
 
 
-				ctx.clearRect(0,0,640,480);	//描画領域クリア
+				ctx.clearRect(0,0,canvasW,canvasH);	//描画領域クリア
 
 				if(shot.shotornot == true){
 					ctx.strokeStyle = "#000000";
@@ -150,9 +156,10 @@
 	</head>
 
 	<body>
-		<canvas id="field" width="640" height="480"></canvas>
+		<canvas id="field" width="1800" height="480"></canvas>
 		<span id="spantag"></span>
 		<img src="主人公シャラライメージ.png" style="display: none;">
+		<img id="arrowimg" src="arrow.png" style="display: none;">
 
 	</body>
 </html>
