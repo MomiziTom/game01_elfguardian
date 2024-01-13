@@ -4,12 +4,12 @@
 		<meta charset="UTF-8">
 		<title>elfshooter</title>
 		<script>
-			let canvasW = 1800;
+			let canvasW = 800;
 			let canvasH = 600;
 			let mouseX = 0;		//マウス位置
 			let mouseY = 0;
-			let archerX = 0;	//射手位置
-			let archerY = 480;
+			let archerX = 100;	//射手位置
+			let archerY = 500;
 			let alpha = 0.3;
 			let aimCircle = 30;
 			let clicknow = false;
@@ -17,10 +17,80 @@
 			let charge = 0;
 			let chargevalue = 0;
 			const gravity = 2;
+			const arrowimgW = 98;
+			const arrowimgH = 98;
 			let fps = setInterval(gameloop,(1/30)*1000);
 
+			let testangle=0;
+			let testU;
+			let testV;
+		
+			function angleCorrect(ang){
+				if((ang * 180/Math.PI)>= 175 && (ang * 180/Math.PI)<=180){
+					ang -=(355 * Math.PI/180);
+				}
+				return ang;
+			}
+
+			// 座標クラス
+			class Point {
+				constructor (_x, _y) {
+					this.x = _x;
+					this.y = _y;
+				}
+
+				// 引数の位置へ向かうベクトルを求める
+				getVecPoint(p) {
+					return new Vec(p.x - this.x, p.y - this.y);
+				}
+			}
+
+			// ベクトルクラス
+			class Vec{
+				constructor (_x, _y) {
+					this.x = _x;
+					this.y = _y;
+				}
+
+				// ベクトル同士の内積を求める
+				dotVec(v) {
+					return this.x * v.x + this.y * v.y;
+				}
+
+				// ベクトル同士の外積を求める
+				crossVec(v) {
+					return this.x * v.y - this.y * v.x;
+				}
+
+				// ベクトルの長さを求める
+				getLength() {
+					return Math.sqrt(this.x*this.x + this.y*this.y);
+				}
+			}
+
+			// 線分クラス
+			class Line {
+				constructor (_start_p, _end_p) {
+					this.start_p = _start_p;
+					this.end_p = _end_p;
+					// ベクトルを設定
+					this.v = new Vec(
+						this.end_p.x - this.start_p.x,
+						this.end_p.y - this.start_p.y
+					);
+				}
+			}
+
+			// 円クラス
+			class Circle {
+				constructor (_p, _r) {
+					this.p = _p;
+					this.r = _r;
+				}
+			}
+
 			class arrow{
-				constructor(ctx2d){
+				constructor(){
 					this.angle = 0.0;
 					this.aimX = 0;
 					this.aimY = 0;
@@ -32,6 +102,8 @@
 					this.currentX = 0;
 					this.currentY = 0;
 					this.shotornot = false;
+					this.imgangleU = 0.0;
+					this.imgangleV = 0.0;
 				}
 				shoot(x,y,ox,oy,pow){
 					this.angle = Math.atan2((y - oy),(x - ox));
@@ -44,27 +116,56 @@
 					this.previousY = oy;
 					this.currentX = ox;
 					this.currentY = oy;
+					this.angle = angleCorrect(this.angle);
+					this.imgangleU = Math.floor((this.angle * 180/Math.PI + 185)/10%9);
+					this.imgangleV = Math.floor((this.angle * 180/Math.PI + 185)/90);
 					this.shotornot = true;
 
 				}
 				move(){
 					if(this.shotornot == true){
-						this.angle = Math.atan2((this.currentY - this.previousY),(this.currentX - this.previousX));//マイナスラジアンで上向き。右方向水平で0ラジアン。プラスラジアンで下向き。左方向水平でπ(3.1415...)
 						this.previousX = this.currentX;
 						this.previousY = this.currentY;
 						this.currentX +=this.speedX;
 						this.speedY += gravity;			//重力を加算　後で消す
 						this.currentY +=this.speedY;
+						this.angle = Math.atan2((this.currentY - this.previousY),(this.currentX - this.previousX));//マイナスラジアンで上向き。右方向水平で0ラジアン。プラスラジアンで下向き。左方向水平でπ(3.1415...)
+						this.angle = angleCorrect(this.angle);
+						this.imgangleU = Math.floor((this.angle * 180/Math.PI + 185)/10%9);
+						this.imgangleV = Math.floor((this.angle * 180/Math.PI + 185)/90);
 					}
 				}
 			}
 
-			let shot = new arrow();
+			class enemyCircle{
+				constructor(_x,_y,_r){
+					this.x = _x;
+					this.y = _y;
+					this.r = _r;
+					this.hit = false;
+				}
+				display(ctx){
+					ctx.strokeStyle = "#000000";
+					ctx.globalAlpha = 0.4;    //照準表示の不透明度
+					ctx.lineWidth = this.r*2;  //照準表示の大きさ
+					ctx.lineCap = "round";
+					ctx.beginPath();
+					ctx.moveTo(this.x,this.y);
+					ctx.lineTo(this.x,this.y);
+					ctx.stroke();
 
+				}
+			}
+
+			let shot = new arrow();
+			let enemy1 = new enemyCircle(400,400,30);
 
 			function gameloop(){
 
 				//数値計算領域----------------------------------------------------------<
+
+				//操作受付----------<
+
 				document.getElementById("field").addEventListener(
 					"mousemove",
 					function(event){
@@ -85,6 +186,11 @@
 						shootnow = true;
 					}
 				);
+
+				//操作受付---------->
+
+				//計算部----------<
+
 				if(clicknow == true){
 					++chargevalue;
 					charge = chargevalue * chargevalue * 0.3;
@@ -109,11 +215,14 @@
 				}
 
 				shot.move();
+
+				//計算部---------->
+
 				//数値計算領域---------------------------------------------------------->
 
 
 
-				//計算結果画面描画領域----------------------------------------------------------<
+				//描画領域----------------------------------------------------------<
 
 				let field = document.getElementById("field");
 				field.width = canvasW;
@@ -123,17 +232,20 @@
 
 				ctx.clearRect(0,0,canvasW,canvasH);	//描画領域クリア
 
-				if(shot.shotornot == true){
-					ctx.strokeStyle = "#000000";
-					ctx.globalAlpha = 1;    //照準表示の不透明度
-					ctx.lineWidth = 5;
-					ctx.lineCap = "round";
-					ctx.beginPath();
-					ctx.moveTo(shot.previousX,shot.previousY);
-					ctx.lineTo(shot.currentX,shot.currentY);
-					ctx.stroke();
+				testangle = Math.atan2((mouseY - archerY),(mouseX - archerX));
+				testangle = angleCorrect(testangle);
+				testU = Math.floor((testangle * 180/Math.PI + 185)/10%9);
+				testV = Math.floor((testangle * 180/Math.PI + 185)/90);
+				ctx.drawImage(arrowimg,testU*48,testV*48,47,47,archerX-arrowimgW/2,archerY-arrowimgH/2,arrowimgW,arrowimgH);
 
+				if(shot.shotornot == true){
+					let arrowimg = document.getElementById("arrowimg");
+					let imgX = arrowimg.width;
+					let imgY = arrowimg.height;
+					ctx.drawImage(arrowimg,shot.imgangleU*48,shot.imgangleV*48,47,47,shot.currentX-arrowimgH/2,shot.currentY-arrowimgH/2,arrowimgW,arrowimgH);
 				}
+
+				enemy1.display(ctx);
 
 				//照準表示描画<
 				ctx.strokeStyle = "#000000";
@@ -146,9 +258,9 @@
 				ctx.stroke();
 				//照準表示描画>
 
-				//計算結果画面描画領域---------------------------------------------------------->
+				//描画領域---------------------------------------------------------->
 
-				document.getElementById("spantag").textContent = (`${mouseX}  ${mouseY}`);
+				document.getElementById("spantag").textContent = (`${mouseX}  ${mouseY}  ${testU}  ${testV}  ${testangle}`);
 			}
 
 
@@ -159,7 +271,7 @@
 		<canvas id="field" width="1800" height="480"></canvas>
 		<span id="spantag"></span>
 		<img src="主人公シャラライメージ.png" style="display: none;">
-		<img id="arrowimg" src="arrow.png" style="display: none;">
+		<img class="dotpic" id="arrowimg" src="arrow.png" style="display: none;">
 
 	</body>
 </html>
