@@ -154,41 +154,69 @@
 
 			// 矢クラス
 			class arrow{
+				static num = 0;
+
 				constructor(){
 					this.speed = new Vec(0,0);
 					this.shotornot = false;
-					this.curP = new Point(0,0);
-					this.preP = new Point(0,0);
-					this.trajectoryLine = new Line(this.preP,this.preP);
-
+					this.startP = new Point(0,0);
+					this.trajectoryLine = new Line(this.startP,this.startP);
 				}
 				shoot(p,op,pow){
-					this.curP = new Point(op.x,op.y);
-					this.preP = new Point(op.x,op.y);
+					this.startP = new Point(op.x,op.y);
 					this.angle = Math.atan2((p.y - op.y),(p.x - op.x));
 					this.speed.setVec((pow * Math.cos(this.angle)),(pow * Math.sin(this.angle)));
-					this.trajectoryLine = new Line(this.preP,this.preP);
+					this.trajectoryLine = new Line(this.startP,this.startP);
 					let UVangle = angleCorrect(this.angle);
 					this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
 					this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
 					this.shotornot = true;
-
+					this.hitornot = false;
 				}
 				move(){
 					if(this.shotornot == true){
-						this.trajectoryLine.startToEnd();
-						this.trajectoryLine.moveEnd(this.speed);
-						this.speed.plusGravity();
-						this.angle = this.trajectoryLine.getAngle();//マイナスラジアンで上向き。右方向水平で0ラジアン。プラスラジアンで下向き。左方向水平でπ(3.1415...)
-						let UVangle = angleCorrect(this.angle);
-						this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
-						this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
+						if(this.hitornot == false){
+							this.trajectoryLine.startToEnd();
+							this.trajectoryLine.moveEnd(this.speed);
+							this.speed.plusGravity();
+							this.angle = this.trajectoryLine.getAngle();//マイナスラジアンで上向き。右方向水平で0ラジアン。プラスラジアンで下向き。左方向水平でπ(3.1415...)
+							let UVangle = angleCorrect(this.angle);
+							this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
+							this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
+						}
 					}
 				}
+				hit(circle){
+					this.hitornot = true;
+					
+					//let hitCoordinate = circle;
+					this.trajectoryLine.end_p = circle.p;
+					this.angle = this.trajectoryLine.getAngle();
+					let UVangle = angleCorrect(this.angle);
+					this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
+					this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
+
+				}
+				shotReset(){
+					this.shotornot = false;
+					this.startP.setPoint(-400,-400);
+					this.angle = 0;
+					this.speed.setVec(0,0);
+					this.trajectoryLine = new Line(this.startP,this.startP);
+					this.hitornot = false;
+				}
+
+				display(ctx){
+					let arrowimg = document.getElementById("arrowimg");
+					ctx.drawImage(arrowimg,this.imgangleU*48,this.imgangleV*48,47,47,this.trajectoryLine.end_p.x-arrowimgH/2,this.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
+				}
+
 			}
 
 			// 円形当たり判定敵クラス
 			class enemyCircle{
+				static num = 0;
+
 				constructor(_p,_r){
 					this.circle = new Circle(_p,_r);
 					this.hit = false;
@@ -202,24 +230,37 @@
 					ctx.moveTo(this.circle.p.x,this.circle.p.y);
 					ctx.lineTo(this.circle.p.x,this.circle.p.y);
 					ctx.stroke();
+					ctx.globalAlpha = 1;    //照準表示の不透明度
 
 				}
 			}
 
-			let mouseP = new Point(0,0);		//マウス位置
-			let archerP = new Point(80,500);	//射手位置
+			// 座標と座標(円と円)が接しているか確認する関数　_r1,_r2で座標を中心とした円を形成
+			function circleColCircle(_p1, _r1, _p2, _r2){
+				let x = _p1.x - _p2.x;
+				let y = _p1.y - _p2.y;
+				let r = Math.sqrt(x * x + y * y);
+
+				return r <= _r1 + _r2;
+			}
+
+			let mouseP = new Point(0,0);
+			let archerP = new Point(80,500);
+			let arrowNum = 6;
 			let alpha = 0.3;
 			let aimCircle = 30;
 			let clicknow = false;
-			let shootnow = false;
+			let clickup = false;
 			let charge = 0;
 			let chargevalue = 0;
-			let shot1 = new arrow();
-			let shot2 = new arrow();
-			let shot3 = new arrow();
-			let shot4 = new arrow();
-			let shot5 = new arrow();
-			let enemy1 = new enemyCircle((new Point(400,400)),30);
+			let arrowArray = new Array();
+			for(let i = 0 ; i < arrowNum ; i++){
+				arrowArray.push(new arrow());
+			}
+			let enemyArray = new Array();
+			for(let i = 0 ; i < 5 ; i++){
+				enemyArray.push(new enemyCircle((new Point(600,i*90+60)),30));
+			}
 
 			// ゲームループ
 			function gameloop(){
@@ -244,7 +285,7 @@
 					"mouseup",
 					function(){
 						clicknow = false;
-						shootnow = true;
+						clickup = true;
 					}
 				);
 
@@ -263,45 +304,43 @@
 					alpha = charge/400;
 					aimCircle = charge/10;
 					//照準の不透明度、大きさの変化>
-				}
-				if(shootnow == true){
 
-					if(shot4.shotornot == true){
-						if(shot5.shotornot ==false){
-							shot5.shoot(mouseP,archerP,charge);
+				}
+				if(clickup == true){
+
+					for(let i = arrowArray.length - 1 ; i >= 0 ; i--){
+						if(i != 0){
+							if(arrowArray[i-1].shotornot == true){
+								if(arrowArray[i].shotornot == false){
+									arrowArray[i].shoot(mouseP,archerP,charge);
+								}
+								break;
+							}
 						}
-					}
-					if(shot3.shotornot == true){
-						if(shot4.shotornot ==false){
-							shot4.shoot(mouseP,archerP,charge);
+						else{
+							if(arrowArray[i].shotornot == false){
+									arrowArray[i].shoot(mouseP,archerP,charge);
+								}
 						}
-					}
-					if(shot2.shotornot == true){
-						if(shot3.shotornot ==false){
-							shot3.shoot(mouseP,archerP,charge);
-						}
-					}
-					if(shot1.shotornot == true){
-						if(shot2.shotornot ==false){
-							shot2.shoot(mouseP,archerP,charge);
-						}
-					}
-					if(shot1.shotornot == false){
-						shot1.shoot(mouseP,archerP,charge);
 					}
 					charge = 0;
 					chargevalue = 0;
 					alpha = 0.3;
 					aimCircle = 30;
 
-					shootnow= false;
+					if(circleColCircle(mouseP,1,archerP,24)){
+						for(i = 0; i < arrowArray.length ; i++){
+							arrowArray[i].shotReset();
+						}
+					}
+
+
+					clickup= false;
 				}
 
-				shot1.move();
-				shot2.move();
-				shot3.move();
-				shot4.move();
-				shot5.move();
+				for(i = 0; i < arrowArray.length ; i++){
+					arrowArray[i].move();
+				}
 
 				//計算部---------->
 
@@ -326,54 +365,28 @@
 				testV = Math.floor((testangle * 180/Math.PI + 185)/90);
 				ctx.drawImage(arrowimg,testU*48,testV*48,47,47,archerP.x-arrowimgW/2,archerP.y-arrowimgH/2,arrowimgW,arrowimgH);
 
-				if(shot1.shotornot == true){
-					let arrowimg = document.getElementById("arrowimg");
-					let imgX = arrowimg.width;
-					let imgY = arrowimg.height;
-					ctx.drawImage(arrowimg,shot1.imgangleU*48,shot1.imgangleV*48,47,47,shot1.trajectoryLine.end_p.x-arrowimgH/2,shot1.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
-				}
-				if(shot2.shotornot == true){
-					let arrowimg = document.getElementById("arrowimg");
-					let imgX = arrowimg.width;
-					let imgY = arrowimg.height;
-					ctx.drawImage(arrowimg,shot2.imgangleU*48,shot2.imgangleV*48,47,47,shot2.trajectoryLine.end_p.x-arrowimgH/2,shot2.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
-				}
-				if(shot3.shotornot == true){
-					let arrowimg = document.getElementById("arrowimg");
-					let imgX = arrowimg.width;
-					let imgY = arrowimg.height;
-					ctx.drawImage(arrowimg,shot3.imgangleU*48,shot3.imgangleV*48,47,47,shot3.trajectoryLine.end_p.x-arrowimgH/2,shot3.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
-				}
-				if(shot4.shotornot == true){
-					let arrowimg = document.getElementById("arrowimg");
-					let imgX = arrowimg.width;
-					let imgY = arrowimg.height;
-					ctx.drawImage(arrowimg,shot4.imgangleU*48,shot4.imgangleV*48,47,47,shot4.trajectoryLine.end_p.x-arrowimgH/2,shot4.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
-				}
-				if(shot5.shotornot == true){
-					let arrowimg = document.getElementById("arrowimg");
-					let imgX = arrowimg.width;
-					let imgY = arrowimg.height;
-					ctx.drawImage(arrowimg,shot5.imgangleU*48,shot5.imgangleV*48,47,47,shot5.trajectoryLine.end_p.x-arrowimgH/2,shot5.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
+				for(i = 0; i < arrowArray.length ; i++){
+					for(j = 0; j < enemyArray.length ; j++){
+						if(circleColLine(enemyArray[j].circle,arrowArray[i].trajectoryLine)){
+							if(arrowArray[i].shotornot == true){
+								enemyArray[j].display(ctx);
+								arrowArray[i].hit(enemyArray[j].circle);
+
+							}
+						}
+					}
 				}
 
-				if(circleColLine(enemy1.circle,shot1.trajectoryLine)){
-					enemy1.display(ctx);
+				for(i = 0; i < arrowArray.length ; i++){
+					if(arrowArray[i].shotornot == true){
+						arrowArray[i].display(ctx);
+					}
 				}
-				if(circleColLine(enemy1.circle,shot2.trajectoryLine)){
-					enemy1.display(ctx);
-				}
-				if(circleColLine(enemy1.circle,shot3.trajectoryLine)){
-					enemy1.display(ctx);
-				}
-				if(circleColLine(enemy1.circle,shot4.trajectoryLine)){
-					enemy1.display(ctx);
-				}
-				if(circleColLine(enemy1.circle,shot5.trajectoryLine)){
-					enemy1.display(ctx);
-				}
-				enemy1.display(ctx);
 
+
+				for(i = 0; i < enemyArray.length ; i++){
+					enemyArray[i].display(ctx);
+				}
 				//照準表示描画<
 				ctx.strokeStyle = "#000000";
 				ctx.globalAlpha = alpha;    //照準表示の不透明度
@@ -402,8 +415,3 @@
 
 	</body>
 </html>
-
-<!--キャラクター名
-	主人公　：　シャララ
-	主人公の妹　：　ルーヤ
-	--> 
