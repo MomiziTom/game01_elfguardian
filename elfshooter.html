@@ -6,20 +6,10 @@
 		<script>
 			let canvasW = 800;
 			let canvasH = 600;
-			let mouseX = 0;		//マウス位置
-			let mouseY = 0;
-			let archerX = 100;	//射手位置
-			let archerY = 500;
-			let alpha = 0.3;
-			let aimCircle = 30;
-			let clicknow = false;
-			let shootnow = false;
-			let charge = 0;
-			let chargevalue = 0;
+			let fps = setInterval(gameloop,(1/30)*1000);
 			const gravity = 2;
 			const arrowimgW = 98;
 			const arrowimgH = 98;
-			let fps = setInterval(gameloop,(1/30)*1000);
 
 			let testangle=0;
 			let testU;
@@ -43,6 +33,13 @@
 				getVecPoint(p) {
 					return new Vec(p.x - this.x, p.y - this.y);
 				}
+
+				//数値を再設定
+				setPoint (_x, _y) {
+					this.x = _x;
+					this.y = _y;
+				}
+
 			}
 
 			// ベクトルクラス
@@ -66,6 +63,13 @@
 				getLength() {
 					return Math.sqrt(this.x*this.x + this.y*this.y);
 				}
+
+				//数値を再設定
+				setVec (_x, _y) {
+					this.x = _x;
+					this.y = _y;
+				}
+
 			}
 
 			// 線分クラス
@@ -79,6 +83,38 @@
 						this.end_p.y - this.start_p.y
 					);
 				}
+
+				//数値を再設定
+				setLine (_start_p, _end_p) {
+					this.start_p = _start_p;
+					this.end_p = _end_p;
+					// ベクトルを設定
+					this.v = new Vec(
+						this.end_p.x - this.start_p.x,
+						this.end_p.y - this.start_p.y
+					);
+				}
+
+				//ベクトルの角度を求める
+				getAngle(){
+					return Math.atan2((this.end_p.y - this.start_p.y),(this.end_p.x - this.start_p.x));
+				}
+
+				// 現在の始点を現在の終点で更新
+				startToEnd(){
+					this.start_p = this.end_p;
+				}
+
+				// 終点を引数ベクトル分移動
+				moveEnd(v){
+					this.end_p.x += v.x;
+					this.end_p.y += v.y;
+				}
+
+				// Y軸方向に重力を加算
+				plusGravity(){
+					this.end_p.y += gravity;
+				}
 			}
 
 			// 円クラス
@@ -89,54 +125,36 @@
 				}
 			}
 
+			// 矢クラス
 			class arrow{
 				constructor(){
-					this.angle = 0.0;
-					this.aimX = 0;
-					this.aimY = 0;
-					this.power = 0;
-					this.speedX = 1;    //暫定的な値
-					this.speedY = -1;
-					this.previousX = 0;
-					this.previousY = 0;
-					this.currentX = 0;
-					this.currentY = 0;
+					this.speed = new Vec(0,0);
 					this.shotornot = false;
-					this.imgangleU = 0.0;
-					this.imgangleV = 0.0;
 				}
-				shoot(x,y,ox,oy,pow){
-					this.angle = Math.atan2((y - oy),(x - ox));
-					this.aimX = x;
-					this.aimY = y;
-					this.power = pow;
-					this.speedX = pow * Math.cos(this.angle);    //暫定的な値
-					this.speedY = pow * Math.sin(this.angle);
-					this.previousX = ox;
-					this.previousY = oy;
-					this.currentX = ox;
-					this.currentY = oy;
-					this.angle = angleCorrect(this.angle);
-					this.imgangleU = Math.floor((this.angle * 180/Math.PI + 185)/10%9);
-					this.imgangleV = Math.floor((this.angle * 180/Math.PI + 185)/90);
+				shoot(p,op,pow){
+					this.angle = Math.atan2((p.y - op.y),(p.x - op.x));
+					this.speed.setVec((pow * Math.cos(this.angle)),(pow * Math.sin(this.angle)));
+					this.line = new Line(op,op);
+					let UVangle = angleCorrect(this.angle);
+					this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
+					this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
 					this.shotornot = true;
 
 				}
 				move(){
 					if(this.shotornot == true){
-						this.previousX = this.currentX;
-						this.previousY = this.currentY;
-						this.currentX +=this.speedX;
-						this.speedY += gravity;			//重力を加算　後で消す
-						this.currentY +=this.speedY;
-						this.angle = Math.atan2((this.currentY - this.previousY),(this.currentX - this.previousX));//マイナスラジアンで上向き。右方向水平で0ラジアン。プラスラジアンで下向き。左方向水平でπ(3.1415...)
-						this.angle = angleCorrect(this.angle);
+						this.line.startToEnd;
+						this.line.moveEnd(this.speed);
+						this.line.plusGravity();
+						this.angle = this.line.getAngle;//マイナスラジアンで上向き。右方向水平で0ラジアン。プラスラジアンで下向き。左方向水平でπ(3.1415...)
+						let UVangle = angleCorrect(this.angle);
 						this.imgangleU = Math.floor((this.angle * 180/Math.PI + 185)/10%9);
 						this.imgangleV = Math.floor((this.angle * 180/Math.PI + 185)/90);
 					}
 				}
 			}
 
+			// 円形当たり判定敵クラス
 			class enemyCircle{
 				constructor(_x,_y,_r){
 					this.x = _x;
@@ -157,9 +175,18 @@
 				}
 			}
 
+			let mouseP = new Point(0,0);		//マウス位置
+			let archerP = new Point(20,500);	//射手位置
+			let alpha = 0.3;
+			let aimCircle = 30;
+			let clicknow = false;
+			let shootnow = false;
+			let charge = 0;
+			let chargevalue = 0;
 			let shot = new arrow();
 			let enemy1 = new enemyCircle(400,400,30);
 
+			// ゲームループ
 			function gameloop(){
 
 				//数値計算領域----------------------------------------------------------<
@@ -169,8 +196,8 @@
 				document.getElementById("field").addEventListener(
 					"mousemove",
 					function(event){
-						mouseX = event.offsetX;
-						mouseY = event.offsetY;
+						mouseP.x = event.offsetX;
+						mouseP.y = event.offsetY;
 					}
 				);
 				document.getElementById("field").addEventListener(
@@ -205,7 +232,7 @@
 				}
 				if(shootnow == true){
 
-					shot.shoot(mouseX,mouseY,archerX,archerY,charge);    //powの値１は暫定的な値
+					shot.shoot(mouseP,archerP,charge);    //powの値１は暫定的な値
 					charge = 0;
 					chargevalue = 0;
 					alpha = 0.3;
@@ -232,11 +259,11 @@
 
 				ctx.clearRect(0,0,canvasW,canvasH);	//描画領域クリア
 
-				testangle = Math.atan2((mouseY - archerY),(mouseX - archerX));
+				testangle = Math.atan2((mouseP.y - archerP.y),(mouseP.x - archerP.x));
 				testangle = angleCorrect(testangle);
 				testU = Math.floor((testangle * 180/Math.PI + 185)/10%9);
 				testV = Math.floor((testangle * 180/Math.PI + 185)/90);
-				ctx.drawImage(arrowimg,testU*48,testV*48,47,47,archerX-arrowimgW/2,archerY-arrowimgH/2,arrowimgW,arrowimgH);
+				ctx.drawImage(arrowimg,testU*48,testV*48,47,47,archerP.x-arrowimgW/2,archerP.y-arrowimgH/2,arrowimgW,arrowimgH);
 
 				if(shot.shotornot == true){
 					let arrowimg = document.getElementById("arrowimg");
@@ -253,14 +280,14 @@
 				ctx.lineWidth = aimCircle;  //照準表示の大きさ
 				ctx.lineCap = "round";
 				ctx.beginPath();
-				ctx.moveTo(mouseX,mouseY);
-				ctx.lineTo(mouseX,mouseY);
+				ctx.moveTo(mouseP.x,mouseP.y);
+				ctx.lineTo(mouseP.x,mouseP.y);
 				ctx.stroke();
 				//照準表示描画>
 
 				//描画領域---------------------------------------------------------->
 
-				document.getElementById("spantag").textContent = (`${mouseX}  ${mouseY}  ${testU}  ${testV}  ${testangle}`);
+				document.getElementById("spantag").textContent = (`${mouseP.x}  ${mouseP.y}  ${testU}  ${testV}  ${testangle}`);
 			}
 
 
