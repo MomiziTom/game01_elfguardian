@@ -70,6 +70,11 @@
 					this.y = _y;
 				}
 
+				// Y軸方向に重力を加算
+				plusGravity(){
+					this.y += gravity;
+				}
+
 			}
 
 			// 線分クラス
@@ -97,24 +102,22 @@
 
 				//ベクトルの角度を求める
 				getAngle(){
-					return Math.atan2((this.end_p.y - this.start_p.y),(this.end_p.x - this.start_p.x));
+					return Math.atan2(this.v.y,this.v.x);
 				}
 
 				// 現在の始点を現在の終点で更新
 				startToEnd(){
-					this.start_p = this.end_p;
+					this.start_p = new Point(this.end_p.x,this.end_p.y);
 				}
 
 				// 終点を引数ベクトル分移動
 				moveEnd(v){
 					this.end_p.x += v.x;
 					this.end_p.y += v.y;
+					this.v.x = this.end_p.x - this.start_p.x;
+					this.v.y = this.end_p.y - this.start_p.y;
 				}
 
-				// Y軸方向に重力を加算
-				plusGravity(){
-					this.end_p.y += gravity;
-				}
 			}
 
 			// 円クラス
@@ -125,16 +128,46 @@
 				}
 			}
 
+			// 円と線分の衝突判定処理
+			// return true:衝突している false:衝突していない
+			function circleColLine(circleP, lineAB) {
+ 
+				let vecAP = lineAB.start_p.getVecPoint(circleP.p);
+				let vecBP = lineAB.end_p.getVecPoint(circleP.p);
+
+				// 線分AX、PXの長さを求める
+				let dotAX = lineAB.v.dotVec(vecAP) / lineAB.v.getLength();
+				let crossPX = lineAB.v.crossVec(vecAP) / lineAB.v.getLength();
+
+				// 基本は線分PXの長さを設定
+				let distance = Math.abs(crossPX);
+				if (dotAX < 0) {
+					// 例外１：線分AXと逆方向に最短座標がある場合 -> 線分APの長さを設定
+					distance = vecAP.getLength();
+				} else if (dotAX > lineAB.v.getLength()) {
+					// 例外２：線分ABよりも先に最短座標がある場合 -> 線分BPの長さを設定
+					distance = vecBP.getLength();
+				}
+				// ④ 最短距離が円の半径より小さければ衝突と判定
+				return distance < circleP.r;
+			}
+
 			// 矢クラス
 			class arrow{
 				constructor(){
 					this.speed = new Vec(0,0);
 					this.shotornot = false;
+					this.curP = new Point(0,0);
+					this.preP = new Point(0,0);
+					this.trajectoryLine = new Line(this.preP,this.preP);
+
 				}
 				shoot(p,op,pow){
+					this.curP = new Point(op.x,op.y);
+					this.preP = new Point(op.x,op.y);
 					this.angle = Math.atan2((p.y - op.y),(p.x - op.x));
 					this.speed.setVec((pow * Math.cos(this.angle)),(pow * Math.sin(this.angle)));
-					this.line = new Line(op,op);
+					this.trajectoryLine = new Line(this.preP,this.preP);
 					let UVangle = angleCorrect(this.angle);
 					this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
 					this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
@@ -143,40 +176,38 @@
 				}
 				move(){
 					if(this.shotornot == true){
-						this.line.startToEnd;
-						this.line.moveEnd(this.speed);
-						this.line.plusGravity();
-						this.angle = this.line.getAngle;//マイナスラジアンで上向き。右方向水平で0ラジアン。プラスラジアンで下向き。左方向水平でπ(3.1415...)
+						this.trajectoryLine.startToEnd();
+						this.trajectoryLine.moveEnd(this.speed);
+						this.speed.plusGravity();
+						this.angle = this.trajectoryLine.getAngle();//マイナスラジアンで上向き。右方向水平で0ラジアン。プラスラジアンで下向き。左方向水平でπ(3.1415...)
 						let UVangle = angleCorrect(this.angle);
-						this.imgangleU = Math.floor((this.angle * 180/Math.PI + 185)/10%9);
-						this.imgangleV = Math.floor((this.angle * 180/Math.PI + 185)/90);
+						this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
+						this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
 					}
 				}
 			}
 
 			// 円形当たり判定敵クラス
 			class enemyCircle{
-				constructor(_x,_y,_r){
-					this.x = _x;
-					this.y = _y;
-					this.r = _r;
+				constructor(_p,_r){
+					this.circle = new Circle(_p,_r);
 					this.hit = false;
 				}
 				display(ctx){
 					ctx.strokeStyle = "#000000";
 					ctx.globalAlpha = 0.4;    //照準表示の不透明度
-					ctx.lineWidth = this.r*2;  //照準表示の大きさ
+					ctx.lineWidth = this.circle.r*2;  //照準表示の大きさ
 					ctx.lineCap = "round";
 					ctx.beginPath();
-					ctx.moveTo(this.x,this.y);
-					ctx.lineTo(this.x,this.y);
+					ctx.moveTo(this.circle.p.x,this.circle.p.y);
+					ctx.lineTo(this.circle.p.x,this.circle.p.y);
 					ctx.stroke();
 
 				}
 			}
 
 			let mouseP = new Point(0,0);		//マウス位置
-			let archerP = new Point(20,500);	//射手位置
+			let archerP = new Point(80,500);	//射手位置
 			let alpha = 0.3;
 			let aimCircle = 30;
 			let clicknow = false;
@@ -184,7 +215,8 @@
 			let charge = 0;
 			let chargevalue = 0;
 			let shot = new arrow();
-			let enemy1 = new enemyCircle(400,400,30);
+			let shot2 = new arrow();
+			let enemy1 = new enemyCircle((new Point(400,400)),30);
 
 			// ゲームループ
 			function gameloop(){
@@ -196,8 +228,7 @@
 				document.getElementById("field").addEventListener(
 					"mousemove",
 					function(event){
-						mouseP.x = event.offsetX;
-						mouseP.y = event.offsetY;
+						mouseP.setPoint(event.offsetX,event.offsetY);
 					}
 				);
 				document.getElementById("field").addEventListener(
@@ -232,7 +263,14 @@
 				}
 				if(shootnow == true){
 
-					shot.shoot(mouseP,archerP,charge);    //powの値１は暫定的な値
+					if(shot.shotornot == true){
+						if(shot2.shotornot ==false){
+							shot2.shoot(mouseP,archerP,charge);
+						}
+					}
+					if(shot.shotornot == false){
+						shot.shoot(mouseP,archerP,charge);
+					}
 					charge = 0;
 					chargevalue = 0;
 					alpha = 0.3;
@@ -242,6 +280,7 @@
 				}
 
 				shot.move();
+				shot2.move();
 
 				//計算部---------->
 
@@ -269,9 +308,22 @@
 					let arrowimg = document.getElementById("arrowimg");
 					let imgX = arrowimg.width;
 					let imgY = arrowimg.height;
-					ctx.drawImage(arrowimg,shot.imgangleU*48,shot.imgangleV*48,47,47,shot.currentX-arrowimgH/2,shot.currentY-arrowimgH/2,arrowimgW,arrowimgH);
+					ctx.drawImage(arrowimg,shot.imgangleU*48,shot.imgangleV*48,47,47,shot.trajectoryLine.end_p.x-arrowimgH/2,shot.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
 				}
 
+				if(shot2.shotornot == true){
+					let arrowimg = document.getElementById("arrowimg");
+					let imgX = arrowimg.width;
+					let imgY = arrowimg.height;
+					ctx.drawImage(arrowimg,shot2.imgangleU*48,shot2.imgangleV*48,47,47,shot2.trajectoryLine.end_p.x-arrowimgH/2,shot2.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
+				}
+
+				if(circleColLine(enemy1.circle,shot.trajectoryLine)){
+					enemy1.display(ctx);
+				}
+				if(circleColLine(enemy1.circle,shot2.trajectoryLine)){
+					enemy1.display(ctx);
+				}
 				enemy1.display(ctx);
 
 				//照準表示描画<
