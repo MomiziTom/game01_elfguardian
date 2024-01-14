@@ -214,8 +214,11 @@
 			let shootnow = false;
 			let charge = 0;
 			let chargevalue = 0;
-			let shot = new arrow();
+			let shot1 = new arrow();
 			let shot2 = new arrow();
+			let shot3 = new arrow();
+			let shot4 = new arrow();
+			let shot5 = new arrow();
 			let enemy1 = new enemyCircle((new Point(400,400)),30);
 
 			// ゲームループ
@@ -263,13 +266,28 @@
 				}
 				if(shootnow == true){
 
-					if(shot.shotornot == true){
+					if(shot4.shotornot == true){
+						if(shot5.shotornot ==false){
+							shot5.shoot(mouseP,archerP,charge);
+						}
+					}
+					if(shot3.shotornot == true){
+						if(shot4.shotornot ==false){
+							shot4.shoot(mouseP,archerP,charge);
+						}
+					}
+					if(shot2.shotornot == true){
+						if(shot3.shotornot ==false){
+							shot3.shoot(mouseP,archerP,charge);
+						}
+					}
+					if(shot1.shotornot == true){
 						if(shot2.shotornot ==false){
 							shot2.shoot(mouseP,archerP,charge);
 						}
 					}
-					if(shot.shotornot == false){
-						shot.shoot(mouseP,archerP,charge);
+					if(shot1.shotornot == false){
+						shot1.shoot(mouseP,archerP,charge);
 					}
 					charge = 0;
 					chargevalue = 0;
@@ -279,8 +297,11 @@
 					shootnow= false;
 				}
 
-				shot.move();
+				shot1.move();
 				shot2.move();
+				shot3.move();
+				shot4.move();
+				shot5.move();
 
 				//計算部---------->
 
@@ -294,6 +315,7 @@
 				field.width = canvasW;
 				field.height = canvasH;
 				let ctx = field.getContext("2d");
+				ctx.imageSmoothingEnabled = false ;	//アンチエイリアスをオフ
 
 
 				ctx.clearRect(0,0,canvasW,canvasH);	//描画領域クリア
@@ -304,24 +326,50 @@
 				testV = Math.floor((testangle * 180/Math.PI + 185)/90);
 				ctx.drawImage(arrowimg,testU*48,testV*48,47,47,archerP.x-arrowimgW/2,archerP.y-arrowimgH/2,arrowimgW,arrowimgH);
 
-				if(shot.shotornot == true){
+				if(shot1.shotornot == true){
 					let arrowimg = document.getElementById("arrowimg");
 					let imgX = arrowimg.width;
 					let imgY = arrowimg.height;
-					ctx.drawImage(arrowimg,shot.imgangleU*48,shot.imgangleV*48,47,47,shot.trajectoryLine.end_p.x-arrowimgH/2,shot.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
+					ctx.drawImage(arrowimg,shot1.imgangleU*48,shot1.imgangleV*48,47,47,shot1.trajectoryLine.end_p.x-arrowimgH/2,shot1.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
 				}
-
 				if(shot2.shotornot == true){
 					let arrowimg = document.getElementById("arrowimg");
 					let imgX = arrowimg.width;
 					let imgY = arrowimg.height;
 					ctx.drawImage(arrowimg,shot2.imgangleU*48,shot2.imgangleV*48,47,47,shot2.trajectoryLine.end_p.x-arrowimgH/2,shot2.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
 				}
+				if(shot3.shotornot == true){
+					let arrowimg = document.getElementById("arrowimg");
+					let imgX = arrowimg.width;
+					let imgY = arrowimg.height;
+					ctx.drawImage(arrowimg,shot3.imgangleU*48,shot3.imgangleV*48,47,47,shot3.trajectoryLine.end_p.x-arrowimgH/2,shot3.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
+				}
+				if(shot4.shotornot == true){
+					let arrowimg = document.getElementById("arrowimg");
+					let imgX = arrowimg.width;
+					let imgY = arrowimg.height;
+					ctx.drawImage(arrowimg,shot4.imgangleU*48,shot4.imgangleV*48,47,47,shot4.trajectoryLine.end_p.x-arrowimgH/2,shot4.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
+				}
+				if(shot5.shotornot == true){
+					let arrowimg = document.getElementById("arrowimg");
+					let imgX = arrowimg.width;
+					let imgY = arrowimg.height;
+					ctx.drawImage(arrowimg,shot5.imgangleU*48,shot5.imgangleV*48,47,47,shot5.trajectoryLine.end_p.x-arrowimgH/2,shot5.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
+				}
 
-				if(circleColLine(enemy1.circle,shot.trajectoryLine)){
+				if(circleColLine(enemy1.circle,shot1.trajectoryLine)){
 					enemy1.display(ctx);
 				}
 				if(circleColLine(enemy1.circle,shot2.trajectoryLine)){
+					enemy1.display(ctx);
+				}
+				if(circleColLine(enemy1.circle,shot3.trajectoryLine)){
+					enemy1.display(ctx);
+				}
+				if(circleColLine(enemy1.circle,shot4.trajectoryLine)){
+					enemy1.display(ctx);
+				}
+				if(circleColLine(enemy1.circle,shot5.trajectoryLine)){
 					enemy1.display(ctx);
 				}
 				enemy1.display(ctx);
