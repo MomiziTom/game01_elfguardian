@@ -6,10 +6,10 @@
 		<script>
 			let canvasW = 800;
 			let canvasH = 600;
-			let fps = setInterval(gameloop,(1/30)*1000);
 			const gravity = 2;
 			const arrowimgW = 98;
 			const arrowimgH = 98;
+			let zoom = 2;	//ドット絵の拡大倍率
 
 			let testangle=0;
 			let testU;
@@ -162,6 +162,7 @@
 					this.startP = new Point(0,0);
 					this.trajectoryLine = new Line(this.startP,this.startP);
 				}
+				
 				shoot(p,op,pow){
 					this.startP = new Point(op.x,op.y);
 					this.angle = Math.atan2((p.y - op.y),(p.x - op.x));
@@ -173,6 +174,7 @@
 					this.shotornot = true;
 					this.hitornot = false;
 				}
+				
 				move(){
 					if(this.shotornot == true){
 						if(this.hitornot == false){
@@ -186,6 +188,7 @@
 						}
 					}
 				}
+
 				hit(circle){
 					this.hitornot = true;
 					
@@ -197,6 +200,7 @@
 					this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
 
 				}
+
 				shotReset(){
 					this.shotornot = false;
 					this.startP.setPoint(-400,-400);
@@ -221,6 +225,7 @@
 					this.circle = new Circle(_p,_r);
 					this.hit = false;
 				}
+
 				display(ctx){
 					ctx.strokeStyle = "#000000";
 					ctx.globalAlpha = 0.4;    //照準表示の不透明度
@@ -232,6 +237,75 @@
 					ctx.stroke();
 					ctx.globalAlpha = 1;    //照準表示の不透明度
 
+				}
+			}
+
+			// 画像を読み込んでタイルアニメーションを作るクラス
+			class animation{
+				constructor(_imgTagId, _u, _v, _x, _y, _frequency){
+					this.imgTagId = _imgTagId;
+					let img = document.getElementById(_imgTagId);
+					this.picSizeX = img.width;
+					this.picSizeY = img.height;
+					this.divisionU = _u;
+					this.divisionV = _v;
+					this.tileSizeU = img.width / _u;
+					this.tileSizeV = img.height / _v;
+					this.point = new Point(_x, _y);
+					this.frequency = _frequency;	// コマが更新されるまでの時間
+					this.untilUpdate = 0;			// コマが更新されるまでの時間を計測する変数　frequency == untilUpdateになったときコマを更新してこの値は0になる
+					this.nowU = 0;					// 現在表示中のU側インデックス
+					this.nowV = 0;					// 現在表示中のV側インデックス
+					this.animateornot = true;		// タイルアニメーションさせるか否か
+					this.revDirectionU = false;		// 本来はU方向を右に進んでアニメーションさせるところを左方向に進ませてアニメーションさせるか否か
+				}
+
+				reload(_imgTagId, _u, _v, _x, _y, _frequency){
+					this.imgTagId = _imgTagId;
+					let img = document.getElementById(_imgTagId);
+					this.picSizeX = img.width;
+					this.picSizeY = img.height;
+					this.divisionU = _u;
+					this.divisionV = _v;
+					this.tileSizeU = img.width / _u;
+					this.tileSizeV = img.height / _v;
+					this.point = new Point(_x, _y);
+					this.frequency = _frequency;
+					this.untilUpdate = 0;
+					this.nowU = 0;
+					this.nowV = 0;
+					this.animateornot = true;
+					this.revDirectionU = false;
+				}
+
+				display(ctx){
+					let img = document.getElementById(this.imgTagId);
+					ctx.drawImage(
+						img,
+						this.nowU * this.tileSizeU,
+						this.nowV * this.tileSizeV,
+						this.tileSizeU - 1,
+						this.tileSizeV - 1,
+						this.point.x - (this.tileSizeU/2)*zoom,
+						this.point.y - (this.tileSizeV/2)*zoom,
+						this.tileSizeU*zoom,
+						this.tileSizeV*zoom,
+					);
+					if(this.animateornot == true){
+						if(this.revDirectionU ==false){
+							++this.untilUpdate;
+							this.nowU +=Math.floor(this.untilUpdate/this.frequency);
+							this.nowU %=this.divisionU;
+							this.untilUpdate %= this.frequency;
+						}else{
+							++this.untilUpdate;
+							this.nowU -=Math.floor(this.untilUpdate/this.frequency);
+							if(this.nowU < 0){
+								this.nowU =this.divisionU-1;
+							}
+							this.untilUpdate %= this.frequency;					
+						}
+					}
 				}
 			}
 
@@ -261,10 +335,17 @@
 			for(let i = 0 ; i < 5 ; i++){
 				enemyArray.push(new enemyCircle((new Point(600,i*90+60)),30));
 			}
+			let reloadornot = false;
+			let testanime;
 
+			//html側のimg要素など、ページ読み込みが完了しないと取得できない要素を扱うオブジェクトはこの中へ入れる
+			window.addEventListener("load", function(){
+				testanime = new animation("arrowimg", 9, 4, 200, 200, 4);
+			});
+
+			let fps = setInterval(gameloop,(1/30)*1000);
 			// ゲームループ
 			function gameloop(){
-
 				//数値計算領域----------------------------------------------------------<
 
 				//操作受付----------<
@@ -356,8 +437,9 @@
 				let ctx = field.getContext("2d");
 				ctx.imageSmoothingEnabled = false ;	//アンチエイリアスをオフ
 
-
 				ctx.clearRect(0,0,canvasW,canvasH);	//描画領域クリア
+
+				testanime.display(ctx);
 
 				testangle = Math.atan2((mouseP.y - archerP.y),(mouseP.x - archerP.x));
 				testangle = angleCorrect(testangle);
@@ -369,7 +451,6 @@
 					for(j = 0; j < enemyArray.length ; j++){
 						if(circleColLine(enemyArray[j].circle,arrowArray[i].trajectoryLine)){
 							if(arrowArray[i].shotornot == true){
-								enemyArray[j].display(ctx);
 								arrowArray[i].hit(enemyArray[j].circle);
 
 							}
