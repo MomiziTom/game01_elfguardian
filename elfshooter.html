@@ -259,25 +259,6 @@
 					this.animateornot = true;		// タイルアニメーションさせるか否か
 					this.revDirectionU = false;		// 本来はU方向を右に進んでアニメーションさせるところを左方向に進ませてアニメーションさせるか否か
 				}
-
-				reload(_imgTagId, _u, _v, _x, _y, _frequency){
-					this.imgTagId = _imgTagId;
-					let img = document.getElementById(_imgTagId);
-					this.picSizeX = img.width;
-					this.picSizeY = img.height;
-					this.divisionU = _u;
-					this.divisionV = _v;
-					this.tileSizeU = img.width / _u;
-					this.tileSizeV = img.height / _v;
-					this.point = new Point(_x, _y);
-					this.frequency = _frequency;
-					this.untilUpdate = 0;
-					this.nowU = 0;
-					this.nowV = 0;
-					this.animateornot = true;
-					this.revDirectionU = false;
-				}
-
 				display(ctx){
 					let img = document.getElementById(this.imgTagId);
 					ctx.drawImage(
@@ -335,7 +316,6 @@
 			for(let i = 0 ; i < 5 ; i++){
 				enemyArray.push(new enemyCircle((new Point(600,i*90+60)),30));
 			}
-			let reloadornot = false;
 			let testanime;
 
 			//html側のimg要素など、ページ読み込みが完了しないと取得できない要素を扱うオブジェクトはこの中へ入れる
@@ -346,6 +326,7 @@
 			let fps = setInterval(gameloop,(1/30)*1000);
 			// ゲームループ
 			function gameloop(){
+
 				//数値計算領域----------------------------------------------------------<
 
 				//操作受付----------<
