@@ -544,24 +544,6 @@
 				ctx.globalAlpha = 1.0;
 				//照準表示描画>
 
-
-				
-				let testimg = document.getElementById("testimg");
-				for(i = 0 ; i <1500 ; i++){
-					ctx.drawImage(
-						testimg,
-						testtime*Math.sin((i+testtime)*(testtime/100)*Math.PI/180)/2,
-						i,
-						testimg.width - 1,
-						1,
-						0,
-						i,
-						testimg.width - 1,
-						1,
-					);
-
-				}
-
 				//描画領域---------------------------------------------------------->
 
 				document.getElementById("spantag").textContent = (`${mouseP.x}  ${mouseP.y}  ${testU}  ${testV}  ${testangle}`);
