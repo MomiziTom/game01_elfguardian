@@ -550,11 +550,11 @@
 				for(i = 0 ; i <1500 ; i++){
 					ctx.drawImage(
 						testimg,
-						0,
+						testtime*Math.sin((i+testtime)*(testtime/100)*Math.PI/180)/2,
 						i,
 						testimg.width - 1,
 						1,
-						testtime*2/5*Math.cos((i*testtime/200) * Math.PI/180),
+						0,
 						i,
 						testimg.width - 1,
 						1,
