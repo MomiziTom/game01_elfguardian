@@ -153,6 +153,123 @@
 				return distance < circleP.r;
 			}
 
+			// animationクラスのプロパティを設定しておくプリセット用クラス
+			class animePreset{
+				constructor(_imgTagId, _u, _v, _frequency){
+					this._imgTagId = _imgTagId;
+					this._u = _u;
+					this._v = _v;
+					this._frequency = _frequency;
+				}
+			}
+
+			// 画像を読み込んでタイルアニメーションを作るクラス
+			class animation{
+				constructor(_animePreset, _x, _y){
+					this.imgTagId = _animePreset._imgTagId;
+					let img = document.getElementById(_animePreset._imgTagId);
+					this.picSizeX = img.width;
+					this.picSizeY = img.height;
+					this.divisionU = _animePreset._u;			//画像の横方向の分割数
+					this.divisionV = _animePreset._v;			//画像の縦方向の分割数
+					this.tileSizeU = img.width / _animePreset._u;
+					this.tileSizeV = img.height / _animePreset._v;
+					this.point = new Point(_x, _y);
+					this.frequency = _animePreset._frequency;	// コマが更新されるまでの時間
+					this.untilUpdate = 0;			// コマが更新されるまでの時間を計測する変数　frequency == untilUpdateになったときコマを更新してこの値は0になる
+					this.alpha = 1.0;
+					this.nowU = 0;					// 現在表示中のU側インデックス
+					this.nowV = 0;					// 現在表示中のV側インデックス
+					this.animateornot = true;		// タイルアニメーションさせるか否か
+					this.revDirectionU = false;		// 本来はU方向を右に進んでアニメーションさせるところを左方向に進ませてアニメーションさせるか否か
+				}
+
+				chargeImg(_imgTagId, _u, _v){
+					this.imgTagId = _imgTagId;
+					let img = document.getElementById(_imgTagId);
+					this.picSizeX = img.width;
+					this.picSizeY = img.height;
+					this.divisionU = _u;
+					this.divisionV = _v;
+					this.tileSizeU = img.width / _u;
+					this.tileSizeV = img.height / _v;
+
+				}
+				// 変えたくない値にはnullを設定すること
+				setValue(_x, _y, _frequency, _untilUpdate, _nowU, _nowV, _alpha){
+					if(_x != null){
+						this.point.x = Object.assign(_x);
+					}
+					if(_y != null){
+						this.point.y = Object.assign(_y);
+					}
+					if(_frequency != null){
+						this.frequency = _frequency;
+					}
+					if(_untilUpdate != null){
+						this.untilUpdate = _untilUpdate;
+					}
+					if(_nowU != null){
+						this.nowU = _nowU;
+					}
+					if(_nowV != null){
+						this.nowV = _nowV;
+					}
+					if(_alpha != null){
+						this.alpha = _alpha;
+					}
+				}
+				setTileV(_nowV){
+					this.nowV = _nowV;
+				}
+
+				setAlpha(_alpha){
+					this.alpha = _alpha;
+				}
+
+				// 変えたくない値にはnullを設定すること
+				animateAndRevDirectSet(_animateornot, _revDirectionU){
+					if(_animateornot != null){
+						this.animateornot = _animateornot;
+					}
+					if(_revDirectionU != null){
+						this.revDirectionU = _revDirectionU;
+					}
+				}
+
+				display(ctx){
+					let img = document.getElementById(this.imgTagId);
+					ctx.globalAlpha = this.alpha;
+					ctx.drawImage(
+						img,
+						this.nowU * this.tileSizeU,
+						this.nowV * this.tileSizeV,
+						this.tileSizeU - 1,
+						this.tileSizeV - 1,
+						this.point.x - (this.tileSizeU/2)*zoom,
+						this.point.y - (this.tileSizeV/2)*zoom,
+						this.tileSizeU*zoom,
+						this.tileSizeV*zoom,
+					);
+					ctx.globalAlpha = 1.0;
+					if(this.animateornot == true){
+						if(this.revDirectionU ==false){
+							++this.untilUpdate;
+							this.nowU +=Math.floor(this.untilUpdate/this.frequency);
+							this.nowU %=this.divisionU;
+							this.untilUpdate %= this.frequency;
+						}else{
+							++this.untilUpdate;
+							this.nowU -=Math.floor(this.untilUpdate/this.frequency);
+							if(this.nowU < 0){
+								this.nowU =this.divisionU-1;
+							}
+							this.untilUpdate %= this.frequency;					
+						}
+					}
+				}
+			}
+
 			// 矢クラス
 			class arrow{
 				static num = 0;
@@ -219,111 +336,6 @@
 
 			}
 
-			// 画像を読み込んでタイルアニメーションを作るクラス
-			class animation{
-				constructor(_imgTagId, _u, _v, _x, _y, _frequency){
-					this.imgTagId = _imgTagId;
-					let img = document.getElementById(_imgTagId);
-					this.picSizeX = img.width;
-					this.picSizeY = img.height;
-					this.divisionU = _u;			//画像の横方向の分割数
-					this.divisionV = _v;			//画像の縦方向の分割数
-					this.tileSizeU = img.width / _u;
-					this.tileSizeV = img.height / _v;
-					this.point = new Point(_x, _y);
-					this.frequency = _frequency;	// コマが更新されるまでの時間
-					this.untilUpdate = 0;			// コマが更新されるまでの時間を計測する変数　frequency == untilUpdateになったときコマを更新してこの値は0になる
-					this.alpha = 1.0;
-					this.nowU = 0;					// 現在表示中のU側インデックス
-					this.nowV = 0;					// 現在表示中のV側インデックス
-					this.animateornot = true;		// タイルアニメーションさせるか否か
-					this.revDirectionU = false;		// 本来はU方向を右に進んでアニメーションさせるところを左方向に進ませてアニメーションさせるか否か
-				}
-
-				chargeImg(_imgTagId, _u, _v){
-					this.imgTagId = _imgTagId;
-					let img = document.getElementById(_imgTagId);
-					this.picSizeX = img.width;
-					this.picSizeY = img.height;
-					this.divisionU = _u;
-					this.divisionV = _v;
-					this.tileSizeU = img.width / _u;
-					this.tileSizeV = img.height / _v;
-
-				}
-				// 変えたくない値にはnullを設定すること
-				setValue(_x, _y, _frequency, _untilUpdate, _nowU, _nowV){
-					if(_x != null){
-						this.point.x = Object.assign(_x);
-					}
-					if(_y != null){
-						this.point.y = Object.assign(_y);
-					}
-					if(_frequency != null){
-						this.frequency = _frequency;
-					}
-					if(_untilUpdate != null){
-						this.untilUpdate = _untilUpdate;
-					}
-					if(_nowU != null){
-						this.nowU = _nowU;
-					}
-					if(_nowV != null){
-						this.nowV = _nowV;
-					}
-				}
-				setV(_nowV){
-					this.nowV = _nowV;
-				}
-
-				setAlpha(_alpha){
-					this.alpha = _alpha;
-				}
-
-				// 変えたくない値にはnullを設定すること
-				animateAndRevDirectSet(_animateornot, _revDirectionU){
-					if(_animateornot != null){
-						this.animateornot = _animateornot;
-					}
-					if(_revDirectionU != null){
-						this.revDirectionU = _revDirectionU;
-					}
-				}
-
-				display(ctx){
-					let img = document.getElementById(this.imgTagId);
-					ctx.globalAlpha = this.alpha;
-					ctx.drawImage(
-						img,
-						this.nowU * this.tileSizeU,
-						this.nowV * this.tileSizeV,
-						this.tileSizeU - 1,
-						this.tileSizeV - 1,
-						this.point.x - (this.tileSizeU/2)*zoom,
-						this.point.y - (this.tileSizeV/2)*zoom,
-						this.tileSizeU*zoom,
-						this.tileSizeV*zoom,
-					);
-					ctx.globalAlpha = 1.0;
-					if(this.animateornot == true){
-						if(this.revDirectionU ==false){
-							++this.untilUpdate;
-							this.nowU +=Math.floor(this.untilUpdate/this.frequency);
-							this.nowU %=this.divisionU;
-							this.untilUpdate %= this.frequency;
-						}else{
-							++this.untilUpdate;
-							this.nowU -=Math.floor(this.untilUpdate/this.frequency);
-							if(this.nowU < 0){
-								this.nowU =this.divisionU-1;
-							}
-							this.untilUpdate %= this.frequency;					
-						}
-					}
-				}
-			}
-
-
 			// 円形当たり判定敵クラス
 			class enemyCircle{
 				static num = 0;
@@ -373,16 +385,17 @@
 			for(let i = 0 ; i < 5 ; i++){
 				enemyArray.push(new enemyCircle((new Point(600,i*90+60)),30));
 			}
+			let arrowPreset = new animePreset("arrowimg", 9, 4, 4);
+			let numberPreset = new animePreset("numberimg", 4, 4, 8);
 			let testanime;
 			let testanime2;
 
 			//html側のimg要素など、ページ読み込みが完了しないと取得できない要素を扱うオブジェクトはこの中へ入れる
 			window.addEventListener("load", function(){
-				testanime = new animation("arrowimg", 9, 4, 200, 200, 4);
-				testanime.setV(2);
-				testanime.setAlpha(0.2);
-				testanime2 = new animation("numberimg", 4, 4, 400, 400, 8);
-				testanime2.setV(2);
+				testanime = new animation(arrowPreset, 200, 200);
+				testanime.setTileV(2);
+				testanime2 = new animation(numberPreset, 400, 400);
+				testanime2.setTileV(2);
 			});
 
 			let fps = setInterval(gameloop,1000/30);
@@ -528,7 +541,26 @@
 				ctx.moveTo(mouseP.x,mouseP.y);
 				ctx.lineTo(mouseP.x,mouseP.y);
 				ctx.stroke();
+				ctx.globalAlpha = 1.0;
 				//照準表示描画>
+
+
+				
+				let testimg = document.getElementById("testimg");
+				for(i = 0 ; i <1500 ; i++){
+					ctx.drawImage(
+						testimg,
+						0,
+						i,
+						testimg.width - 1,
+						1,
+						60*Math.cos((testtime*2) * Math.PI / 180) *Math.sin((i*5) * Math.PI / 180),
+						i,
+						testimg.width - 1,
+						1,
+					);
+
+				}
 
 				//描画領域---------------------------------------------------------->
 
@@ -542,7 +574,7 @@
 	<body>
 		<canvas id="field" width="1800" height="480"></canvas>
 		<span id="spantag"></span>
-		<img src="主人公シャラライメージ.png" style="display: none;">
+		<img id="testimg" src="主人公シャラライメージ.png" style="display: none;">
 		<img class="dotpic" id="arrowimg" src="arrow.png" style="display: none;">
 		<img class="dotpic" id="numberimg" src="p192x192samplematerial.png" style="display: none;">
 
