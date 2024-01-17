@@ -9,6 +9,7 @@
 			const gravity = 2;
 			const arrowimgW = 98;
 			const arrowimgH = 98;
+			const invalidArea = -10000;
 			let zoom = 2;	//ドット絵の拡大倍率
 
 			let testangle=0;
@@ -184,16 +185,16 @@
 					this.revDirectionU = false;		// 本来はU方向を右に進んでアニメーションさせるところを左方向に進ませてアニメーションさせるか否か
 				}
 
-				chargeImg(_imgTagId, _u, _v){
-					this.imgTagId = _imgTagId;
-					let img = document.getElementById(_imgTagId);
+				changePreset(_animePreset){
+					this.imgTagId = _animePreset._imgTagId;
+					let img = document.getElementById(_animePreset._imgTagId);
 					this.picSizeX = img.width;
 					this.picSizeY = img.height;
-					this.divisionU = _u;
-					this.divisionV = _v;
+					this.divisionU = _animePreset._u;
+					this.divisionV = _animePreset._v;
 					this.tileSizeU = img.width / _u;
 					this.tileSizeV = img.height / _v;
-
+					this.frequency = _animePreset._frequency;
 				}
 				// 変えたくない値にはnullを設定すること
 				setValue(_x, _y, _frequency, _untilUpdate, _nowU, _nowV, _alpha){
@@ -226,6 +227,9 @@
 				setAlpha(_alpha){
 					this.alpha = _alpha;
 				}
+				setDispPoint(_p){
+					this.point = _p;	
+				}
 
 				// 変えたくない値にはnullを設定すること
 				animateAndRevDirectSet(_animateornot, _revDirectionU){
@@ -237,7 +241,7 @@
 					}
 				}
 
-				display(ctx){
+				animationDisplay(ctx){
 					let img = document.getElementById(this.imgTagId);
 					ctx.globalAlpha = this.alpha;
 					ctx.drawImage(
@@ -277,8 +281,9 @@
 				constructor(){
 					this.speed = new Vec(0,0);
 					this.shotornot = false;
-					this.startP = new Point(0,0);
+					this.startP = new Point(invalidArea,invalidArea);
 					this.trajectoryLine = new Line(this.startP,this.startP);
+					this.animation = new animation(arrowPreset, invalidArea, invalidArea);
 				}
 				
 				shoot(p,op,pow){
@@ -310,7 +315,6 @@
 				hit(circle){
 					this.hitornot = true;
 					
-					//let hitCoordinate = circle;
 					this.trajectoryLine.end_p = circle.p;
 					this.angle = this.trajectoryLine.getAngle();
 					this.trajectoryLine.start_p = circle.p;
@@ -330,8 +334,17 @@
 				}
 
 				display(ctx){
-					let arrowimg = document.getElementById("arrowimg");
-					ctx.drawImage(arrowimg,this.imgangleU*48,this.imgangleV*48,47,47,this.trajectoryLine.end_p.x-arrowimgH/2,this.trajectoryLine.end_p.y-arrowimgH/2,arrowimgW,arrowimgH);
+					let arrowimg = document.getElementById(this.animation.imgTagId);
+					ctx.drawImage(arrowimg,
+						this.imgangleU*48,
+						this.imgangleV*48,
+						47,
+						47,
+						this.trajectoryLine.end_p.x-arrowimgH/2,
+						this.trajectoryLine.end_p.y-arrowimgH/2,
+						arrowimgW,
+						arrowimgH
+					);
 				}
 
 			}
@@ -340,22 +353,15 @@
 			class enemyCircle{
 				static num = 0;
 
-				constructor(_p,_r){
+				constructor(_p, _r, _animePreset){
 					this.circle = new Circle(_p,_r);
 					this.hit = false;
+					this.animation = new animation(_animePreset, _p.x, _p.y);
 				}
 
 				display(ctx){
-					ctx.strokeStyle = "#000000";
-					ctx.globalAlpha = 0.4;    //照準表示の不透明度
-					ctx.lineWidth = this.circle.r*2;  //照準表示の大きさ
-					ctx.lineCap = "round";
-					ctx.beginPath();
-					ctx.moveTo(this.circle.p.x,this.circle.p.y);
-					ctx.lineTo(this.circle.p.x,this.circle.p.y);
-					ctx.stroke();
-					ctx.globalAlpha = 1;    //照準表示の不透明度
-
+					this.animation.setDispPoint(this.circle.p);
+					this.animation.animationDisplay(ctx);
 				}
 			}
 
@@ -377,25 +383,25 @@
 			let clickup = false;
 			let charge = 0;
 			let chargevalue = 0;
-			let arrowArray = new Array();
-			for(let i = 0 ; i < arrowNum ; i++){
-				arrowArray.push(new arrow());
-			}
-			let enemyArray = new Array();
-			for(let i = 0 ; i < 5 ; i++){
-				enemyArray.push(new enemyCircle((new Point(600,i*90+60)),30));
-			}
 			let arrowPreset = new animePreset("arrowimg", 9, 4, 4);
 			let numberPreset = new animePreset("numberimg", 4, 4, 8);
 			let testanime;
 			let testanime2;
-
+			let arrowArray = new Array();
+			let enemyArray = new Array();
 			//html側のimg要素など、ページ読み込みが完了しないと取得できない要素を扱うオブジェクトはこの中へ入れる
 			window.addEventListener("load", function(){
 				testanime = new animation(arrowPreset, 200, 200);
 				testanime.setTileV(2);
 				testanime2 = new animation(numberPreset, 400, 400);
 				testanime2.setTileV(2);
+				for(let i = 0 ; i < arrowNum ; i++){
+					arrowArray.push(new arrow());
+				}
+				for(let i = 0 ; i < 5 ; i++){
+					enemyArray.push(new enemyCircle(( new Point ( 600 , i * 90 + 60 )), 30, numberPreset));
+					enemyArray[i].animation.setTileV(2);
+				}
 			});
 
 			let fps = setInterval(gameloop,1000/30);
@@ -404,7 +410,7 @@
 				++testtime;
 				++testtime;
 				++testtime;
-				for(let i = 0 ; i < 5 ; i++){
+				for(let i = 0 ; i < enemyArray.length ; i++){
 					enemyArray[i].circle.p.x = 600 + 150*Math.cos((testtime/3) * Math.PI / 180);
 					enemyArray[i].circle.p.y = i*90+60 + 170*Math.sin(testtime * Math.PI / 180);
 				}
@@ -502,8 +508,8 @@
 
 				ctx.clearRect(0,0,canvasW,canvasH);	//描画領域クリア
 
-				testanime.display(ctx);
-				testanime2.display(ctx);
+				//testanime.animationDisplay(ctx);
+				//testanime2.animationDisplay(ctx);
 
 				testangle = Math.atan2((mouseP.y - archerP.y),(mouseP.x - archerP.x));
 				testangle = angleCorrect(testangle);
@@ -516,7 +522,6 @@
 						if(circleColLine(enemyArray[j].circle,arrowArray[i].trajectoryLine)){
 							if(arrowArray[i].shotornot == true){
 								arrowArray[i].hit(enemyArray[j].circle);
-
 							}
 						}
 					}
@@ -527,7 +532,6 @@
 						arrowArray[i].display(ctx);
 					}
 				}
-
 
 				for(i = 0; i < enemyArray.length ; i++){
 					enemyArray[i].display(ctx);
