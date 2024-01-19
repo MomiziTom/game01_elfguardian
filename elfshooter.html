@@ -4,105 +4,553 @@
 		<meta charset="UTF-8">
 		<title>elfshooter</title>
 		<script>
-			let mouseX = 0;
-			let mouseY = 0;
-			let archerX = 0;
-			let archerY = 480;
-			let alpha = 0.3;
-			let aimCircle = 30;
-			let clicknow = false;
-			let shootnow = false;
-			const gravity = 1;
-			let fps = setInterval(gameloop,(1/30)*1000);
+			let canvasW = 800;
+			let canvasH = 600;
+			const gravity = 2;
+			const arrowimgW = 98;
+			const arrowimgH = 98;
+			const invalidArea = -10000;
+			let zoom = 2;	//ドット絵の拡大倍率
 
-			class arrow{
-				constructor(ctx2d){
-					this.angle = 0.0;
-					this.aimX = 0;
-					this.aimY = 0;
-					this.power = 0;
-					this.speedX = 1;    //暫定的な値
-					this.speedY = 1;
-					this.previousX = 0;
-					this.previousY = 0;
-					this.currentX = 0;
-					this.currentY = 0;
-					this.shotornot = false;
+			let testangle=0;
+			let testU;
+			let testV;
+			let testtime = 0;
+		
+			function angleCorrect(ang){
+				if((ang * 180/Math.PI)>= 175 && (ang * 180/Math.PI)<=180){
+					ang -=(355 * Math.PI/180);
 				}
-				shoot(x,y,ox,oy,pow){
-					this.angle = Math.atan2((y - oy),(x - ox));
-					this.aimX = x;
-					this.aimY = y;
-					this.power = pow;
-					this.speedX = 2;    //暫定処理
-					this.speedY = -2;
-					this.previousX = this.archerX;
-					this.previousY = this.archerY;
-					this.currentX = this.archerX;
-					this.currentY = this.archerY;
-					this.shotornot = true;
+				return ang;
+			}
 
+			// 座標クラス
+			class Point {
+				constructor (_x, _y) {
+					this.x = _x;
+					this.y = _y;
 				}
-				move(){
-					if(this.shotornot == true){
 
-						this.previousX = this.currentX;
-						this.previousY = this.currentY;
-						this.currentX +=this.speedX;
-						this.currentY +=this.speedY + gravity;
+				// 引数の位置へ向かうベクトルを求める
+				getVecPoint(p) {
+					return new Vec(p.x - this.x, p.y - this.y);
+				}
+
+				//数値を再設定
+				setPoint (_x, _y) {
+					this.x = _x;
+					this.y = _y;
+				}
+
+			}
+
+			// ベクトルクラス
+			class Vec{
+				constructor (_x, _y) {
+					this.x = _x;
+					this.y = _y;
+				}
+
+				// ベクトル同士の内積を求める
+				dotVec(v) {
+					return this.x * v.x + this.y * v.y;
+				}
+
+				// ベクトル同士の外積を求める
+				crossVec(v) {
+					return this.x * v.y - this.y * v.x;
+				}
+
+				// ベクトルの長さを求める
+				getLength() {
+					return Math.sqrt(this.x*this.x + this.y*this.y);
+				}
+
+				//数値を再設定
+				setVec (_x, _y) {
+					this.x = _x;
+					this.y = _y;
+				}
+
+				// Y軸方向に重力を加算
+				plusGravity(){
+					this.y += gravity;
+				}
+
+			}
+
+			// 線分クラス
+			class Line {
+				constructor (_start_p, _end_p) {
+					this.start_p = _start_p;
+					this.end_p = _end_p;
+					// ベクトルを設定
+					this.v = new Vec(
+						this.end_p.x - this.start_p.x,
+						this.end_p.y - this.start_p.y
+					);
+				}
+
+				//数値を再設定
+				setLine (_start_p, _end_p) {
+					this.start_p = _start_p;
+					this.end_p = _end_p;
+					// ベクトルを設定
+					this.v = new Vec(
+						this.end_p.x - this.start_p.x,
+						this.end_p.y - this.start_p.y
+					);
+				}
+
+				//ベクトルの角度を求める
+				getAngle(){
+					return Math.atan2(this.v.y,this.v.x);
+				}
+
+				// 現在の始点を現在の終点で更新
+				startToEnd(){
+					this.start_p = new Point(this.end_p.x,this.end_p.y);
+				}
+
+				// 終点を引数ベクトル分移動
+				moveEnd(v){
+					this.end_p.x += v.x;
+					this.end_p.y += v.y;
+					this.v.x = this.end_p.x - this.start_p.x;
+					this.v.y = this.end_p.y - this.start_p.y;
+				}
+
+			}
+
+			// 円クラス
+			class Circle {
+				constructor (_p, _r) {
+					this.p = _p;
+					this.r = _r;
+				}
+			}
+
+			// 円と線分の衝突判定処理
+			// return true:衝突している false:衝突していない
+			function circleColLine(circleP, lineAB) {
+ 
+				let vecAP = lineAB.start_p.getVecPoint(circleP.p);
+				let vecBP = lineAB.end_p.getVecPoint(circleP.p);
+
+				// 線分AX、PXの長さを求める
+				let dotAX = lineAB.v.dotVec(vecAP) / lineAB.v.getLength();
+				let crossPX = lineAB.v.crossVec(vecAP) / lineAB.v.getLength();
+
+				// 基本は線分PXの長さを設定
+				let distance = Math.abs(crossPX);
+				if (dotAX < 0) {
+					// 例外１：線分AXと逆方向に最短座標がある場合 -> 線分APの長さを設定
+					distance = vecAP.getLength();
+				} else if (dotAX > lineAB.v.getLength()) {
+					// 例外２：線分ABよりも先に最短座標がある場合 -> 線分BPの長さを設定
+					distance = vecBP.getLength();
+				}
+				// ④ 最短距離が円の半径より小さければ衝突と判定
+				return distance < circleP.r;
+			}
+
+			// animationクラスのプロパティを設定しておくプリセット用クラス
+			class animePreset{
+				constructor(_imgTagId, _u, _v, _frequency){
+					this._imgTagId = _imgTagId;
+					this._u = _u;
+					this._v = _v;
+					this._frequency = _frequency;
+				}
+			}
+
+			// 画像を読み込んでタイルアニメーションを作るクラス
+			class animation{
+				constructor(_animePreset, _x, _y){
+					this.imgTagId = _animePreset._imgTagId;
+					let img = document.getElementById(_animePreset._imgTagId);
+					this.picSizeX = img.width;
+					this.picSizeY = img.height;
+					this.divisionU = _animePreset._u;			//画像の横方向の分割数
+					this.divisionV = _animePreset._v;			//画像の縦方向の分割数
+					this.tileSizeU = img.width / _animePreset._u;
+					this.tileSizeV = img.height / _animePreset._v;
+					this.point = new Point(_x, _y);
+					this.frequency = _animePreset._frequency;	// コマが更新されるまでの時間
+					this.untilUpdate = 0;			// コマが更新されるまでの時間を計測する変数　frequency == untilUpdateになったときコマを更新してこの値は0になる
+					this.alpha = 1.0;
+					this.nowU = 0;					// 現在表示中のU側インデックス
+					this.nowV = 0;					// 現在表示中のV側インデックス
+					this.animateornot = true;		// タイルアニメーションさせるか否か
+					this.revDirectionU = false;		// 本来はU方向を右に進んでアニメーションさせるところを左方向に進ませてアニメーションさせるか否か
+				}
+
+				changePreset(_animePreset){
+					this.imgTagId = _animePreset._imgTagId;
+					let img = document.getElementById(_animePreset._imgTagId);
+					this.picSizeX = img.width;
+					this.picSizeY = img.height;
+					this.divisionU = _animePreset._u;
+					this.divisionV = _animePreset._v;
+					this.tileSizeU = img.width / _u;
+					this.tileSizeV = img.height / _v;
+					this.frequency = _animePreset._frequency;
+				}
+				// 変えたくない値にはnullを設定すること
+				setValue(_x, _y, _frequency, _untilUpdate, _nowU, _nowV, _alpha){
+					if(_x != null){
+						this.point.x = Object.assign(_x);
+					}
+					if(_y != null){
+						this.point.y = Object.assign(_y);
+					}
+					if(_frequency != null){
+						this.frequency = _frequency;
+					}
+					if(_untilUpdate != null){
+						this.untilUpdate = _untilUpdate;
+					}
+					if(_nowU != null){
+						this.nowU = _nowU;
+					}
+					if(_nowV != null){
+						this.nowV = _nowV;
+					}
+					if(_alpha != null){
+						this.alpha = _alpha;
+					}
+				}
+				setTileV(_nowV){
+					this.nowV = _nowV;
+				}
+
+				setAlpha(_alpha){
+					this.alpha = _alpha;
+				}
+				setDispPoint(_p){
+					this.point = _p;	
+				}
+
+				// 変えたくない値にはnullを設定すること
+				animateAndRevDirectSet(_animateornot, _revDirectionU){
+					if(_animateornot != null){
+						this.animateornot = _animateornot;
+					}
+					if(_revDirectionU != null){
+						this.revDirectionU = _revDirectionU;
+					}
+				}
+
+				animationDisplay(ctx){
+					let img = document.getElementById(this.imgTagId);
+					ctx.globalAlpha = this.alpha;
+					ctx.drawImage(
+						img,
+						this.nowU * this.tileSizeU,
+						this.nowV * this.tileSizeV,
+						this.tileSizeU - 1,
+						this.tileSizeV - 1,
+						this.point.x - (this.tileSizeU/2)*zoom,
+						this.point.y - (this.tileSizeV/2)*zoom,
+						this.tileSizeU*zoom,
+						this.tileSizeV*zoom,
+					);
+					ctx.globalAlpha = 1.0;
+					if(this.animateornot == true){
+						if(this.revDirectionU ==false){
+							++this.untilUpdate;
+							this.nowU +=Math.floor(this.untilUpdate/this.frequency);
+							this.nowU %=this.divisionU;
+							this.untilUpdate %= this.frequency;
+						}else{
+							++this.untilUpdate;
+							this.nowU -=Math.floor(this.untilUpdate/this.frequency);
+							if(this.nowU < 0){
+								this.nowU =this.divisionU-1;
+							}
+							this.untilUpdate %= this.frequency;					
+						}
 					}
 				}
 			}
 
+			// 矢クラス
+			class arrow{
+				static num = 0;
 
+				constructor(){
+					this.speed = new Vec(0,0);
+					this.shotornot = false;
+					this.startP = new Point(invalidArea,invalidArea);
+					this.trajectoryLine = new Line(this.startP,this.startP);
+					this.animation = new animation(arrowPreset, invalidArea, invalidArea);
+				}
+				
+				shoot(p,op,pow){
+					this.startP = new Point(op.x,op.y);
+					this.angle = Math.atan2((p.y - op.y),(p.x - op.x));
+					this.speed.setVec((pow * Math.cos(this.angle)),(pow * Math.sin(this.angle)));
+					this.trajectoryLine = new Line(this.startP,this.startP);
+					let UVangle = angleCorrect(this.angle);
+					this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
+					this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
+					this.shotornot = true;
+					this.hitornot = false;
+				}
+				
+				move(){
+					if(this.shotornot == true){
+						if(this.hitornot == false){
+							this.trajectoryLine.startToEnd();
+							this.trajectoryLine.moveEnd(this.speed);
+							this.speed.plusGravity();
+							this.angle = this.trajectoryLine.getAngle();//マイナスラジアンで上向き。右方向水平で0ラジアン。プラスラジアンで下向き。左方向水平でπ(3.1415...)
+							let UVangle = angleCorrect(this.angle);
+							this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
+							this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
+						}
+					}
+				}
 
+				hit(circle){
+					this.hitornot = true;
+					
+					this.trajectoryLine.end_p = circle.p;
+					this.angle = this.trajectoryLine.getAngle();
+					this.trajectoryLine.start_p = circle.p;
+					let UVangle = angleCorrect(this.angle);
+					this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
+					this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
+
+				}
+
+				shotReset(){
+					this.shotornot = false;
+					this.startP.setPoint(-400,-400);
+					this.angle = 0;
+					this.speed.setVec(0,0);
+					this.trajectoryLine = new Line(this.startP,this.startP);
+					this.hitornot = false;
+				}
+
+				display(ctx){
+					let arrowimg = document.getElementById(this.animation.imgTagId);
+					ctx.drawImage(arrowimg,
+						this.imgangleU*48,
+						this.imgangleV*48,
+						47,
+						47,
+						this.trajectoryLine.end_p.x-arrowimgH/2,
+						this.trajectoryLine.end_p.y-arrowimgH/2,
+						arrowimgW,
+						arrowimgH
+					);
+				}
+
+			}
+
+			// 円形当たり判定敵クラス
+			class enemyCircle{
+				static num = 0;
+
+				constructor(_p, _r, _animePreset){
+					this.circle = new Circle(_p,_r);
+					this.hit = false;
+					this.animation = new animation(_animePreset, _p.x, _p.y);
+				}
+
+				display(ctx){
+					this.animation.setDispPoint(this.circle.p);
+					this.animation.animationDisplay(ctx);
+				}
+			}
+
+			// 座標と座標(円と円)が接しているか確認する関数　_r1,_r2で座標を中心とした円を形成
+			function circleColCircle(_p1, _r1, _p2, _r2){
+				let x = _p1.x - _p2.x;
+				let y = _p1.y - _p2.y;
+				let r = Math.sqrt(x * x + y * y);
+
+				return r <= _r1 + _r2;
+			}
+
+			let mouseP = new Point(0,0);
+			let archerP = new Point(80,200);
+			let arrowNum = 6;
+			let alpha = 0.3;
+			let aimCircle = 30;
+			let clicknow = false;
+			let clickup = false;
+			let charge = 0;
+			let chargevalue = 0;
+			let arrowPreset = new animePreset("arrowimg", 9, 4, 4);
+			let numberPreset = new animePreset("numberimg", 4, 4, 8);
+			let testanime;
+			let testanime2;
+			let arrowArray = new Array();
+			let enemyArray = new Array();
+			//html側のimg要素など、ページ読み込みが完了しないと取得できない要素を扱うオブジェクトはこの中へ入れる
+			window.addEventListener("load", function(){
+				testanime = new animation(arrowPreset, 200, 200);
+				testanime.setTileV(2);
+				testanime2 = new animation(numberPreset, 400, 400);
+				testanime2.setTileV(2);
+				for(let i = 0 ; i < arrowNum ; i++){
+					arrowArray.push(new arrow());
+				}
+				for(let i = 0 ; i < 5 ; i++){
+					enemyArray.push(new enemyCircle(( new Point ( 600 , i * 90 + 60 )), 30, numberPreset));
+					enemyArray[i].animation.setTileV(2);
+				}
+			});
+
+			let fps = setInterval(gameloop,1000/30);
+			// ゲームループ
 			function gameloop(){
-				let field = document.getElementById("field");
-				let ctx = field.getContext("2d");
-				let shot = new arrow();
+				++testtime;
+				++testtime;
+				++testtime;
+				for(let i = 0 ; i < enemyArray.length ; i++){
+					enemyArray[i].circle.p.x = 600 + 150*Math.cos((testtime/3) * Math.PI / 180);
+					enemyArray[i].circle.p.y = i*90+60 + 170*Math.sin(testtime * Math.PI / 180);
+				}
 
-				ctx.clearRect(0,0,640,480);
+				//数値計算領域----------------------------------------------------------<
 
-				document.getElementById("field").addEventListener("mousemove",function(event){
-					mouseX = event.offsetX;
-					mouseY = event.offsetY;
+				//操作受付----------<
+
+				document.getElementById("field").addEventListener(
+					"mousemove",
+					function(event){
+						mouseP.setPoint(event.offsetX,event.offsetY);
 					}
 				);
-				document.getElementById("field").addEventListener("mousedown",function(){
-					clicknow = true;
-				});
-				document.getElementById("field").addEventListener("mouseup",function(){
-					clicknow = false;
-					shootnow = true;
-				});
+				document.getElementById("field").addEventListener(
+					"mousedown",
+					function(){
+						clicknow = true;
+					}
+				);
+				document.getElementById("field").addEventListener(
+					"mouseup",
+					function(){
+						clicknow = false;
+						clickup = true;
+					}
+				);
+
+				//操作受付---------->
+
+				//計算部----------<
+
 				if(clicknow == true){
-					//照準表示描画<
-					ctx.strokeStyle = "#000000";
-					ctx.globalAlpha = alpha;    //照準表示の不透明度
-					ctx.lineWidth = aimCircle;  //照準表示の大きさ
-					ctx.lineCap = "round";
-					ctx.beginPath();
-					ctx.moveTo(mouseX,mouseY);
-					ctx.lineTo(mouseX,mouseY);
-					ctx.stroke();
-					//照準表示描画>
+					++chargevalue;
+					charge = chargevalue * chargevalue * 0.3;
+					if(charge >= 300){
+						charge = 300;
+					}
 
 					//照準の不透明度、大きさの変化<
-					alpha +=0.01;
-					aimCircle += 1;
-					alpha %=0.4;
-					aimCircle %=40;
+					alpha = charge/400;
+					aimCircle = charge/10;
 					//照準の不透明度、大きさの変化>
+
 				}
-				if(shootnow == true){
+				if(clickup == true){
 
-					shot.shoot(mouseX,mouseY,archerX,archerY,1);    //powの値１は暫定的な値
-					shootnow= false;
+					for(let i = arrowArray.length - 1 ; i >= 0 ; i--){
+						if(i != 0){
+							if(arrowArray[i-1].shotornot == true){
+								if(arrowArray[i].shotornot == false){
+									arrowArray[i].shoot(mouseP,archerP,charge);
+								}
+								break;
+							}
+						}
+						else{
+							if(arrowArray[i].shotornot == false){
+									arrowArray[i].shoot(mouseP,archerP,charge);
+								}
+						}
+					}
+					charge = 0;
+					chargevalue = 0;
+					alpha = 0.3;
+					aimCircle = 30;
+
+					if(circleColCircle(mouseP,1,archerP,24)){
+						for(i = 0; i < arrowArray.length ; i++){
+							arrowArray[i].shotReset();
+						}
+					}
+
+
+					clickup= false;
 				}
 
-				shot.move();
+				for(i = 0; i < arrowArray.length ; i++){
+					arrowArray[i].move();
+				}
 
-				document.getElementById("spantag").textContent = (`${mouseX}  ${mouseY}`);
+				//計算部---------->
+
+				//数値計算領域---------------------------------------------------------->
+
+
+
+				//描画領域----------------------------------------------------------<
+
+				let field = document.getElementById("field");
+				field.width = canvasW;
+				field.height = canvasH;
+				let ctx = field.getContext("2d");
+				ctx.imageSmoothingEnabled = false ;	//アンチエイリアスをオフ
+
+				ctx.clearRect(0,0,canvasW,canvasH);	//描画領域クリア
+
+				//testanime.animationDisplay(ctx);
+				//testanime2.animationDisplay(ctx);
+
+				testangle = Math.atan2((mouseP.y - archerP.y),(mouseP.x - archerP.x));
+				testangle = angleCorrect(testangle);
+				testU = Math.floor((testangle * 180/Math.PI + 185)/10%9);
+				testV = Math.floor((testangle * 180/Math.PI + 185)/90);
+				ctx.drawImage(arrowimg,testU*48,testV*48,47,47,archerP.x-arrowimgW/2,archerP.y-arrowimgH/2,arrowimgW,arrowimgH);
+
+				for(i = 0; i < arrowArray.length ; i++){
+					for(j = 0; j < enemyArray.length ; j++){
+						if(circleColLine(enemyArray[j].circle,arrowArray[i].trajectoryLine)){
+							if(arrowArray[i].shotornot == true){
+								arrowArray[i].hit(enemyArray[j].circle);
+							}
+						}
+					}
+				}
+
+				for(i = 0; i < arrowArray.length ; i++){
+					if(arrowArray[i].shotornot == true){
+						arrowArray[i].display(ctx);
+					}
+				}
+
+				for(i = 0; i < enemyArray.length ; i++){
+					enemyArray[i].display(ctx);
+				}
+				//照準表示描画<
+				ctx.strokeStyle = "#000000";
+				ctx.globalAlpha = alpha;    //照準表示の不透明度
+				ctx.lineWidth = aimCircle;  //照準表示の大きさ
+				ctx.lineCap = "round";
+				ctx.beginPath();
+				ctx.moveTo(mouseP.x,mouseP.y);
+				ctx.lineTo(mouseP.x,mouseP.y);
+				ctx.stroke();
+				ctx.globalAlpha = 1.0;
+				//照準表示描画>
+
+				//描画領域---------------------------------------------------------->
+
+				document.getElementById("spantag").textContent = (`${mouseP.x}  ${mouseP.y}  ${testU}  ${testV}  ${testangle}`);
 			}
 
 
@@ -110,13 +558,11 @@
 	</head>
 
 	<body>
-		<canvas id="field" width="640" height="480"></canvas>
+		<canvas id="field" width="1800" height="480"></canvas>
 		<span id="spantag"></span>
-		<img src="主人公シャラライメージ.png" style="display: none;">
+		<img id="testimg" src="主人公シャラライメージ.png" style="display: none;">
+		<img class="dotpic" id="arrowimg" src="arrow.png" style="display: none;">
+		<img class="dotpic" id="numberimg" src="p192x192samplematerial.png" style="display: none;">
 
 	</body>
 </html>
-
-<!--キャラクター名
-	主人公　：　シャララ
-	主人公の妹　：　ルーヤ--> 
