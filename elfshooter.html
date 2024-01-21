@@ -10,6 +10,7 @@
 			const arrowimgW = 98;
 			const arrowimgH = 98;
 			const invalidArea = -10000;
+			const uiTileSize = 16;
 			let zoom = 2;	//ドット絵の拡大倍率
 
 			let testangle=0;
@@ -220,7 +221,16 @@
 						this.alpha = _alpha;
 					}
 				}
+				setTileU(_nowU){
+					this.nowU = _nowU;
+				}
+
 				setTileV(_nowV){
+					this.nowV = _nowV;
+				}
+
+				setTileUV(_nowU, _nowV){
+					this.nowU = _nowU;
 					this.nowV = _nowV;
 				}
 
@@ -248,8 +258,8 @@
 						img,
 						this.nowU * this.tileSizeU,
 						this.nowV * this.tileSizeV,
-						this.tileSizeU - 1,
-						this.tileSizeV - 1,
+						this.tileSizeU,
+						this.tileSizeV,
 						this.point.x - (this.tileSizeU/2)*zoom,
 						this.point.y - (this.tileSizeV/2)*zoom,
 						this.tileSizeU*zoom,
@@ -283,7 +293,9 @@
 					this.shotornot = false;
 					this.startP = new Point(invalidArea,invalidArea);
 					this.trajectoryLine = new Line(this.startP,this.startP);
-					this.animation = new animation(arrowPreset, invalidArea, invalidArea);
+					this.animation = new animation(arrowAnimePreset, invalidArea, invalidArea);
+					this.hitEnemy = false;
+					this.whoHit = -1;
 				}
 				
 				shoot(p,op,pow){
@@ -312,8 +324,14 @@
 					}
 				}
 
-				hit(circle){
+				hitObject(circle, _whoHit){
 					this.hitornot = true;
+					this.whoHit = _whoHit;
+					this.hitEnemy = false;
+					if(_whoHit != -1){
+						this.hitEnemy = true;
+					}
+					
 					
 					this.trajectoryLine.end_p = circle.p;
 					this.angle = this.trajectoryLine.getAngle();
@@ -324,44 +342,78 @@
 
 				}
 
+				vanish(){
+					this.hitornot = true;
+					this.whoHit = -1;
+					this.hitEnemy = false;
+					
+					
+					this.trajectoryLine.end_p = new Point(invalidArea, invalidArea);
+					this.trajectoryLine.startToEnd();
+					this.angle = 0;
+					let UVangle = angleCorrect(this.angle);
+					this.imgangleU = Math.floor((UVangle * 180/Math.PI + 185)/10%9);
+					this.imgangleV = Math.floor((UVangle * 180/Math.PI + 185)/90);
+
+				}
+
+
 				shotReset(){
 					this.shotornot = false;
-					this.startP.setPoint(-400,-400);
+					this.startP.setPoint(invalidArea,invalidArea);
 					this.angle = 0;
 					this.speed.setVec(0,0);
 					this.trajectoryLine = new Line(this.startP,this.startP);
 					this.hitornot = false;
+					this.hitEnemy = false;
+					this.whoHit = -1;
 				}
 
 				display(ctx){
 					let arrowimg = document.getElementById(this.animation.imgTagId);
-					ctx.drawImage(arrowimg,
+					ctx.drawImage(
+						arrowimg,
 						this.imgangleU*48,
 						this.imgangleV*48,
-						47,
-						47,
+						48,
+						48,
 						this.trajectoryLine.end_p.x-arrowimgH/2,
 						this.trajectoryLine.end_p.y-arrowimgH/2,
 						arrowimgW,
 						arrowimgH
 					);
 				}
-
 			}
+
+			let enemyNum = 0;
 
 			// 円形当たり判定敵クラス
 			class enemyCircle{
-				static num = 0;
 
-				constructor(_p, _r, _animePreset){
+				constructor(_p, _r, _hp, _animePreset){
 					this.circle = new Circle(_p,_r);
-					this.hit = false;
+					this.dead = false;
 					this.animation = new animation(_animePreset, _p.x, _p.y);
+					this.hp = _hp;
+				}
+
+				hit(){
+					--this.hp;
+					if(this.hp <= 0){
+						this.dead = true;
+						--enemyNum;
+					}
+				}
+
+				aliveOrDeath(){
+					return this.dead;
 				}
 
 				display(ctx){
-					this.animation.setDispPoint(this.circle.p);
-					this.animation.animationDisplay(ctx);
+					if(this.dead == false){
+						this.animation.setDispPoint(this.circle.p);
+						this.animation.animationDisplay(ctx);
+					}
 				}
 			}
 
@@ -374,34 +426,129 @@
 				return r <= _r1 + _r2;
 			}
 
+			// UI表示オブジェクト　主人公の耐久値、矢の残り弾数などの表示
+			let uiDisp = {
+				statusDisplay : function(ctx){
+					let img = document.getElementById("statusicon");
+
+					// 矢の残弾表示
+					ctx.drawImage(
+						img,
+						uiTileSize * 0,
+						uiTileSize * 0,
+						uiTileSize,
+						uiTileSize,
+						uiTileSize * 2,
+						uiTileSize,
+						uiTileSize * 2,
+						uiTileSize * 2						
+					);
+					for(let i = 0 ; i < arrowRemain ; i++){
+						ctx.drawImage(
+							img,
+							uiTileSize * 1,
+							uiTileSize * 0,
+							uiTileSize,
+							uiTileSize,
+							(uiTileSize  * 2 ) + ( (i + 1) * uiTileSize * 2),
+							uiTileSize,
+							uiTileSize * 2,
+							uiTileSize * 2						
+						);
+					}
+
+					// エルフの体力表示
+					ctx.drawImage(
+						img,
+						uiTileSize * 0,
+						uiTileSize * 1,
+						uiTileSize,
+						uiTileSize,
+						canvasW / 2,
+						canvasH - uiTileSize * 2,
+						uiTileSize * 2,
+						uiTileSize * 2						
+					);
+					for(let i = 0 ; i < elfHp ; i++){
+						ctx.drawImage(
+							img,
+							uiTileSize * 1,
+							uiTileSize * 1,
+							uiTileSize,
+							uiTileSize,
+							(canvasW / 2 ) + ( (i + 1 ) * uiTileSize * 2),
+							canvasH - uiTileSize * 2,
+							uiTileSize * 2,
+							uiTileSize * 2						
+						);
+					}
+					
+
+					// 森の耐久値表示
+					ctx.drawImage(
+						img,
+						uiTileSize * 0,
+						uiTileSize * 2,
+						uiTileSize,
+						uiTileSize,
+						uiTileSize,
+						canvasH - uiTileSize * 2,
+						uiTileSize * 2,
+						uiTileSize * 2						
+					);
+					for(let i = 0 ; i < forestHp ; i++){
+						ctx.drawImage(
+							img,
+							uiTileSize * 1,
+							uiTileSize * 2,
+							uiTileSize,
+							uiTileSize,
+							uiTileSize + ((i + 1) * uiTileSize * 2),
+							canvasH - uiTileSize * 2,
+							uiTileSize * 2,
+							uiTileSize * 2						
+						);
+					}
+
+				}
+
+			}
+
 			let mouseP = new Point(0,0);
 			let archerP = new Point(80,200);
-			let arrowNum = 6;
+			let arrowRemain = 6;	// 射れる矢の数
+			let arrowUsage = 6;		// 一度のリロードで補充される矢の数
+			let arrowObject = 40;	// 画面上に表示できる矢の最大数。これ以上の数の矢を放つと一番最初に放たれた矢から順に再計算、再表示される
+			let useArrowIndex = 0;	// 次に発射されるarrowArrayのインデックス番号。0～arrowObjectの値をとる
+			let elfHp = 5;
+			let forestHp = 10;
 			let alpha = 0.3;
 			let aimCircle = 30;
 			let clicknow = false;
 			let clickup = false;
 			let charge = 0;
 			let chargevalue = 0;
-			let arrowPreset = new animePreset("arrowimg", 9, 4, 4);
-			let numberPreset = new animePreset("numberimg", 4, 4, 8);
+			let arrowAnimePreset = new animePreset("arrowimg", 9, 4, 4);
+			let numberAnimePreset = new animePreset("numberimg", 4, 4, 8);
 			let testanime;
 			let testanime2;
 			let arrowArray = new Array();
 			let enemyArray = new Array();
 			//html側のimg要素など、ページ読み込みが完了しないと取得できない要素を扱うオブジェクトはこの中へ入れる
 			window.addEventListener("load", function(){
-				testanime = new animation(arrowPreset, 200, 200);
+				testanime = new animation(arrowAnimePreset, 200, 200);
 				testanime.setTileV(2);
-				testanime2 = new animation(numberPreset, 400, 400);
+				testanime2 = new animation(numberAnimePreset, 400, 400);
 				testanime2.setTileV(2);
-				for(let i = 0 ; i < arrowNum ; i++){
+				for(let i = 0 ; i < arrowObject ; i++){
 					arrowArray.push(new arrow());
 				}
 				for(let i = 0 ; i < 5 ; i++){
-					enemyArray.push(new enemyCircle(( new Point ( 600 , i * 90 + 60 )), 30, numberPreset));
+					enemyArray.push(new enemyCircle(( new Point ( 600 , i * 90 + 60 )), 30, 2, numberAnimePreset));
+					enemyArray[i].animation.setTileU(i);
 					enemyArray[i].animation.setTileV(2);
 				}
+				enemyNum = enemyArray.length;
 			});
 
 			let fps = setInterval(gameloop,1000/30);
@@ -458,38 +605,50 @@
 				}
 				if(clickup == true){
 
-					for(let i = arrowArray.length - 1 ; i >= 0 ; i--){
-						if(i != 0){
-							if(arrowArray[i-1].shotornot == true){
-								if(arrowArray[i].shotornot == false){
-									arrowArray[i].shoot(mouseP,archerP,charge);
-								}
-								break;
-							}
-						}
-						else{
-							if(arrowArray[i].shotornot == false){
-									arrowArray[i].shoot(mouseP,archerP,charge);
-								}
+					if(circleColCircle(mouseP,1,archerP,24)){
+						arrowRemain = arrowUsage;
+					}
+					else{
+						if(arrowRemain > 0){
+							arrowArray[useArrowIndex++].shoot(mouseP,archerP,charge);
+							useArrowIndex %= arrowObject;
+							--arrowRemain;
 						}
 					}
+
 					charge = 0;
 					chargevalue = 0;
 					alpha = 0.3;
 					aimCircle = 30;
-
-					if(circleColCircle(mouseP,1,archerP,24)){
-						for(i = 0; i < arrowArray.length ; i++){
-							arrowArray[i].shotReset();
-						}
-					}
-
-
 					clickup= false;
 				}
 
-				for(i = 0; i < arrowArray.length ; i++){
+				for(let i = 0; i < arrowArray.length ; i++){
 					arrowArray[i].move();
+				}
+				for(let i = 0; i < arrowArray.length ; i++){
+					for(let j = 0; j < enemyArray.length ; j++){
+						if(circleColLine(enemyArray[j].circle,arrowArray[i].trajectoryLine)){
+							if(enemyArray[j].aliveOrDeath() == false){
+								if(arrowArray[i].shotornot == true){
+									if(arrowArray[i].hitornot == false){
+										enemyArray[j].hit();
+									}
+									arrowArray[i].hitObject(enemyArray[j].circle, j);
+								}
+							}
+						}
+					}
+					if(arrowArray[i].trajectoryLine.end_p.y > canvasH + arrowimgH){
+						if(arrowArray[i].hitEnemy ==false){
+							arrowArray[i].vanish();
+						}
+					}
+					if(arrowArray[i].hitEnemy == true){
+						if(enemyArray[arrowArray[i].whoHit].aliveOrDeath()){
+							arrowArray[i].vanish();
+						}
+					}
 				}
 
 				//計算部---------->
@@ -515,24 +674,24 @@
 				testangle = angleCorrect(testangle);
 				testU = Math.floor((testangle * 180/Math.PI + 185)/10%9);
 				testV = Math.floor((testangle * 180/Math.PI + 185)/90);
-				ctx.drawImage(arrowimg,testU*48,testV*48,47,47,archerP.x-arrowimgW/2,archerP.y-arrowimgH/2,arrowimgW,arrowimgH);
+				ctx.drawImage(
+					arrowimg,
+					testU*48,
+					testV*48,
+					48,
+					48,
+					archerP.x-arrowimgW/2,
+					archerP.y-arrowimgH/2,
+					arrowimgW,
+					arrowimgH
+				);
 
-				for(i = 0; i < arrowArray.length ; i++){
-					for(j = 0; j < enemyArray.length ; j++){
-						if(circleColLine(enemyArray[j].circle,arrowArray[i].trajectoryLine)){
-							if(arrowArray[i].shotornot == true){
-								arrowArray[i].hit(enemyArray[j].circle);
-							}
-						}
-					}
-				}
 
 				for(i = 0; i < arrowArray.length ; i++){
 					if(arrowArray[i].shotornot == true){
 						arrowArray[i].display(ctx);
 					}
 				}
-
 				for(i = 0; i < enemyArray.length ; i++){
 					enemyArray[i].display(ctx);
 				}
@@ -548,9 +707,15 @@
 				ctx.globalAlpha = 1.0;
 				//照準表示描画>
 
+				uiDisp.statusDisplay(ctx);
 				//描画領域---------------------------------------------------------->
 
-				document.getElementById("spantag").textContent = (`${mouseP.x}  ${mouseP.y}  ${testU}  ${testV}  ${testangle}`);
+				document.getElementById("mousepointtag").textContent = (`${mouseP.x}  ${mouseP.y}  ${testU}  ${testV}  ${(Math.floor((testangle/Math.PI*180)*10))/100}`);
+				document.getElementById("arrowtag").textContent = (`${arrowRemain} / ${arrowUsage}  ${useArrowIndex}`);
+				if(enemyNum <= 0){
+					document.getElementById("mousepointtag").textContent = ("ゲームクリアー！");
+					document.getElementById("arrowtag").textContent = ("ゲームクリアー！");
+				}
 			}
 
 
@@ -559,10 +724,12 @@
 
 	<body>
 		<canvas id="field" width="1800" height="480"></canvas>
-		<span id="spantag"></span>
+		<div id="mousepointtag"></div>
+		<div id="arrowtag"></div>
 		<img id="testimg" src="主人公シャラライメージ.png" style="display: none;">
 		<img class="dotpic" id="arrowimg" src="arrow.png" style="display: none;">
 		<img class="dotpic" id="numberimg" src="p192x192samplematerial.png" style="display: none;">
+		<img class="dotpic" id="statusicon" src="statusicon.png" style="display: none;">
 
 	</body>
 </html>
