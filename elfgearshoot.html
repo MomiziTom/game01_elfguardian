@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>ELfGearShoot</title>
+		<style>
+			canvas {
+				position: relative;
+				left: 50%;
+				margin-right: -50%;
+				transform: translate(-50%);
+			}
+		</style>
+		<script src="functionset.js"></script>
+		<script src="stage00.js"></script>
+		<script>
+			let canvasW = 800;
+			let canvasH = 600;
+			let fps = 30;
+
+			let elapsedTime = 0;	// 経過時間変数
+			let waveTime = 0;		// ウェーブ中での経過時間変数
+			let wave = 0;			// 現在の敵の出現ウェーブ
+
+			let testangle=0;
+			let testU;
+			let testV;
+			let gameover = false;
+			let mouseP = new Point(0,0);
+			let archerCircle = new Circle(new Point(80,300), 30);
+			let arrowRemain = 6;	// 射れる矢の数
+			let arrowUsage = 6;		// 一度のリロードで補充される矢の数
+			let arrowObject = 40;	// 画面上に表示できる矢の最大数。これ以上の数の矢を放つと一番最初に放たれた矢から順に再計算、再表示される
+			let useArrowIndex = 0;	// 次に発射されるarrowArrayのインデックス番号。0～arrowObjectの値をとる
+			
+			let elfHp = 5;
+			let forestHp = 15;
+			let alpha = 0.3;
+			let aimCircle = 30;
+			let reticleOn = false;
+			let clicknow = false;
+			let clickup = false;
+			let charge = 0;
+			let chargevalue = 0;
+			let arrowArray = new Array();
+			let enemyArray = new Array();
+
+			//html側のimg要素など、ページ読み込みが完了しないと取得できない要素を扱うオブジェクトはこの中へ入れる
+			window.addEventListener("load", function(){
+				document.body.style.cursor = "none";
+				for(let i = 0 ; i < arrowObject ; i++){
+					arrowArray.push(new arrow());
+				}
+				for(let i = 0 ; i < 9 ; i++){
+					enemyArray.push(new enemyCircle( canvasW + 50 , 472 - 30 - (i * 30) % 120, i * 80, 0, goblinJump));
+					enemyArray.push(new enemyCircle( canvasW + 50 , 472 - 60 - (i * 30) % 120, i * 80 + 40, 0, goblin));
+				}
+			});
+
+			let main = setInterval(gameloop,1000 / fps);
+			// ゲームループ--------------------------------------------------------------------ゲームループ
+			function gameloop() {
+				if (!gameover) {
+					//数値計算領域----------------------------------------------------------<
+					//操作受付----------<
+
+					document.getElementById("field").addEventListener(
+						"mousemove",
+						function (event) {
+							mouseP.setPoint(event.offsetX, event.offsetY);
+						}
+					);
+					document.getElementById("field").addEventListener(
+						"mousedown",
+						function () {
+							clicknow = true;
+						}
+					);
+					document.getElementById("field").addEventListener(
+						"mouseup",
+						function () {
+							clicknow = false;
+							clickup = true;
+						}
+					);
+					document.getElementById("field").addEventListener(
+						"mouseenter",
+						function (event) {
+							document.body.style.cursor = "none";
+							reticleOn = true;
+						}
+					);
+					document.getElementById("field").addEventListener(
+						"mouseleave",
+						function (event) {
+							document.body.style.cursor = "default";
+							reticleOn = false;
+						}
+					);
+
+					//操作受付---------->
+
+					//計算部----------<
+
+					if (clicknow == true) {
+						++chargevalue;
+						charge = chargevalue * chargevalue * 0.3;
+						if (charge >= 300) {
+							charge = 300;
+						}
+						//照準の不透明度、大きさの変化<
+						alpha = charge / 400;
+						aimCircle = charge / 10;
+						//照準の不透明度、大きさの変化>
+
+					}
+					if (clickup == true) {
+
+						if (circleColCircle(mouseP, 1, archerCircle.p, archerCircle.r)) {
+							arrowRemain = arrowUsage;
+						}
+						else {
+							if (arrowRemain > 0) {
+								arrowArray[useArrowIndex++].shoot(mouseP, archerCircle.p, charge);
+								useArrowIndex %= arrowObject;
+								--arrowRemain;
+							}
+						}
+
+						charge = 0;
+						chargevalue = 0;
+						alpha = 0.3;
+						aimCircle = 30;
+						clickup = false;
+					}
+
+
+					
+					for (let i = 0; i < arrowArray.length; i++) {
+						arrowArray[i].move();
+					}
+
+					for (let i = 0; i < arrowArray.length; i++) {
+						for (let j = 0; j < enemyArray.length; j++) {
+							if (enemyArray[j].appearOrNot()) {
+								if (circleColLine(enemyArray[j].circle, arrowArray[i].trajectoryLine)) {
+									if (enemyArray[j].aliveOrDeath() == false) {
+										if (arrowArray[i].shotornot == true) {
+											if (arrowArray[i].hitornot == false) {
+												enemyArray[j].hitArrow();
+												arrowArray[i].hitObject(enemyArray[j].circle, j);
+											}
+										}
+									}
+								}
+							}
+						}
+						if (arrowArray[i].trajectoryLine.end_p.y > canvasH * 2) {
+							if (arrowArray[i].hitEnemy == false) {
+								arrowArray[i].vanish();
+							}
+						}
+						if (arrowArray[i].hitEnemy == true) {
+							if (enemyArray[arrowArray[i].whoHit].aliveOrDeath()) {
+								arrowArray[i].vanish();
+							}
+						}
+					}
+
+					for (let i = 0; i < enemyArray.length; i++) {
+						enemyArray[i].move(archerCircle);
+						if (enemyArray[i].aliveOrDeath() == false) {
+							enemyArray[i].attack();
+						}
+					}
+
+					//計算部---------->
+
+					//数値計算領域---------------------------------------------------------->
+
+
+
+					//描画領域----------------------------------------------------------<
+
+					let field = document.getElementById("field");
+					field.width = canvasW;
+					field.height = canvasH;
+					let ctx = field.getContext("2d");
+					ctx.imageSmoothingEnabled = false;	//アンチエイリアスをオフ
+
+					ctx.clearRect(0, 0, canvasW, canvasH);	//描画領域クリア
+
+					drawMap(stage00, ctx, "backgroundimg");
+
+					// あとで消す<
+					testangle = Math.atan2((mouseP.y - archerCircle.p.y), (mouseP.x - archerCircle.p.x));
+					testangle = angleCorrect(testangle);
+					testU = Math.floor((testangle * 180 / Math.PI + 185) / 10 % 9);
+					testV = Math.floor((testangle * 180 / Math.PI + 185) / 90);
+					ctx.drawImage(
+						arrowimg,
+						testU * 48,
+						testV * 48,
+						48,
+						48,
+						archerCircle.p.x - 48,
+						archerCircle.p.y - 48,
+						96,
+						96
+					);
+					// あとで消す>
+
+					for (i = 0; i < arrowArray.length; i++) {
+						if (arrowArray[i].shotornot == true) {
+							arrowArray[i].display(ctx);
+						}
+					}
+					for (i = 0; i < enemyArray.length; i++) {
+						enemyArray[i].display(ctx);
+					}
+					//照準表示描画<
+					if(reticleOn == true){
+						ctx.strokeStyle = "#000000";
+						ctx.globalAlpha = alpha;    //照準表示の不透明度
+						ctx.lineWidth = aimCircle;  //照準表示の大きさ
+						ctx.lineCap = "round";
+						ctx.beginPath();
+						ctx.moveTo(mouseP.x, mouseP.y);
+						ctx.lineTo(mouseP.x, mouseP.y);
+						ctx.stroke();
+						ctx.globalAlpha = 1.0;
+					}
+					//照準表示描画>
+
+					// 戦闘画面領域表示
+					ctx.lineWidth = 2;  //照準表示の大きさ
+					ctx.strokeRect(0, 0, canvasW, 472);
+
+					uiDisp.statusDisplay(ctx);
+					//描画領域---------------------------------------------------------->
+
+					document.getElementById("mousepointtag").textContent = (`${mouseP.x}  ${mouseP.y}  ${testU}  ${testV}  ${(Math.floor((testangle / Math.PI * 180) * 10)) / 100}`);
+					document.getElementById("arrowtag").textContent = (`${arrowRemain} / ${arrowUsage}  ${useArrowIndex}`);
+					if (elfHp <= 0) {
+						document.getElementById("mousepointtag").textContent = ("ゲームオーバー！");
+						document.getElementById("arrowtag").textContent = ("くっ！やられた！");
+						gameover = true;
+						document.body.style.cursor = "default";
+					}
+					else if (forestHp <= 0) {
+						document.getElementById("mousepointtag").textContent = ("ゲームオーバー！");
+						document.getElementById("arrowtag").textContent = ("エルフの森は焼かれてしまった！！");
+						gameover = true;
+						document.body.style.cursor = "default";
+					}
+					else if (enemyNum <= 0) {
+						document.getElementById("mousepointtag").textContent = ("ゲームクリアー！");
+						document.getElementById("arrowtag").textContent = ("エルフの森は守られた！");
+						gameover = true;
+						document.body.style.cursor = "default";
+					}
+
+				}
+				++elapsedTime; // 経過時間変数を増加
+				++waveTime;
+				document.getElementById("timetag").textContent = (`${elapsedTime}  ${(Math.floor(elapsedTime / fps))} `);
+
+			}
+
+
+		</script>
+	</head>
+
+	<body>
+		<canvas id="field" width="800" height="480"></canvas>
+		<div id="mousepointtag"></div>
+		<div id="arrowtag"></div>
+		<div id="timetag"></div>
+		<div id="explanation">発射ポイント(ぐるぐる回る矢)をクリックすると矢を補充できるよ。敵は２発で倒せるよ</div>
+		<img id="testimg" src="主人公シャラライメージ.png" style="display: none;">
+		<img class="dotpic" id="arrowimg" src="arrow.png" style="display: none;">
+		<img class="dotpic" id="numberimg" src="p192x192samplematerial.png" style="display: none;">
+		<img class="dotpic" id="statusicon" src="statusicon.png" style="display: none;">
+		<img class="dotpic" id="elffaceimg" src="elffaceimg.png" style="display: none;">
+		<img class="dotpic" id="backgroundimg" src="stage00_chip.png" style="display: none;">
+
+	</body>
+</html>
