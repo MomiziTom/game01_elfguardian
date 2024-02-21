@@ -1,12 +1,34 @@
-let numberAnimePreset = new animePreset("numberimg", 4, 4, 8);
-let arrowAnimePreset = new animePreset("arrowimg", 9, 4, 4);
+let numberAnimePreset = new animePreset("numberimg", 4, 4, 16);
+let arrowAnimePreset = new animePreset("arrowimg", 9, 4, 8);
+let SE_message;
+let SE_pushEnter;
+let SE_arrowShoot;
+let SE_arrowFly;
+let SE_reload;
+let SE_arrowHit;
+let SE_defeatEnemy;
+let SE_damageElf;
+let SE_damageForest;
+
+let audioswitch = false;
+let pushEnterSoundOn = false;
+let arrowShootSoundOn = false;
+let reloadSoundOn = false;
+let arrowHitSoundOn = false;
+let arrowHitPlayTime = 0;
+let defeatEnemySoundOn = false;
+let defeatEnemyPlayTime = 0;
+let damageElfSoundOn = false;
+let damageElfPlayTime = 0;
+let damageForestSoundOn = false;
+let damageForestPlayTime = 0;
 
 let goblin = new enemyTypePreset(
 	30,
 	2,
 	enemyMove_str,
 	numberAnimePreset,
-	5,
+	2,
 	80,
 	10,
 	0,
@@ -19,9 +41,9 @@ let goblinJump = new enemyTypePreset(
 	2,
 	enemyMove_jump,
 	numberAnimePreset,
-	3,
+	1.5,
 	80,
-	10,
+	5,
 	0,
 	true,
 	aim_off
@@ -51,6 +73,51 @@ let stage00 = [
 	[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
 ];
 
+let stage01 = [
+	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+	[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+	[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+	[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+	[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+	[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+	[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+	[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+	[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+	[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+	[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+];
+let shalala;
+let louya;
+window.addEventListener("load", function(){
+	shalala = new animation(arrowAnimePreset, 200 , 350);
+	louya = new animation(numberAnimePreset, canvasW + 100 , 350);
+});
+
+
+let testmessage = [
+	"お姉ちゃーーん！！！！\f\r",
+	"大変大変！！　　　　　　　　　　　　　　　　　　　　　　　　　\f\r\n遠くから悪いゴブリンの群れがいっぱいやってきたよ！！\f\r",
+	"多分ゴブリンたちはお姉ちゃんが手に持っている　　　　　　　　　　\n「エルフギア」を狙ってやってきたんだよ！！",
+	"エルフギアは矢をいくらでも放つことができる\nエルフの秘伝の武器だよ！　　　　　　　　　　　　　　　　　　　　　\n矢筒に入った矢が空になっても\n「リロード」をすれば矢が無限に補充されるんだ！！　　　　　　　　　　　　　　\nすごいよね・・・！！",
+	"それ以外にもこの森にはエルフの宝がたくさんあるんだ！！　　　　　　　　　　　　　　\nゴブリンたちに侵攻されたら・・・　　　　　　　　　　　　　　　\nこの森と私たちエルフはめちゃくちゃにされちゃうよ！！",
+	"お願いお姉ちゃん！！　　　　　　　　　　　　　　　　　　　\nその「エルフギア」を使ってゴブリンたちを退治して\nこの森を守って！！！"
+];
+
+/*let testmessage = [
+	"これはテストメッセージです",
+	"そしてこれはなんと！\n二行にわたるテストメッセージです！",
+	"そしてお次は！\n三行にわたるメッセージを表示します！\nすごいですね！",
+	"これにてテストはおわりです！"];
+*/
 
 /* web上にアップロードした際に使う設定　テスト段階では不使用
 let mapData = [];

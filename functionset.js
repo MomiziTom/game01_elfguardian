@@ -1,3 +1,6 @@
+let canvasW = 800;
+let canvasH = 600;
+
 const gravity = 2;
 const arrowimgW = 96;
 const arrowimgH = 96;
@@ -21,7 +24,14 @@ const aim_off = 0;
 const aim_on = 1;
 const aim_homing = 2;
 
-const stunTime = 15;	// ダメージを食らって硬直する時間 秒ではなくフレーム数
+const stunTime = 30;	// ダメージを食らって硬直する時間 秒ではなくフレーム数
+
+// メッセージ表示速度
+const messageSpeed_veryFast = 1;
+const messageSpeed_fast = 2;
+const messageSpeed_normal = 3;
+const messageSpeed_slow = 4;
+const messageSpeed_verySlow = 5;
 
 let enemyNum = 0;		// 敵の数 これが0になるタイミングで次のフェーズに移行したりゲームクリアにしたりする
 
@@ -501,10 +511,22 @@ class enemyCircle {
 		if (this.appearTime < elapsedTime) {
 			--this.hp;
 			if (this.hp <= 0) {
+				if(SE_defeatEnemy){
+					SE_defeatEnemy.currentChange(0);
+					SE_defeatEnemy.muteChange(false);
+					defeatEnemySoundOn = true;
+					defeatEnemyPlayTime = SE_defeatEnemy.sound.currentTime;
+				}
 				this.dead = true;
 				--enemyNum;
 			}
 			if (this.enemyTypePreset.stunornot == true) {
+				if(SE_arrowHit){
+					SE_arrowHit.currentChange(0);
+					SE_arrowHit.muteChange(false);
+					arrowHitSoundOn = true;
+					arrowHitPlayTime = SE_arrowHit.sound.currentTime;
+				}
 				this.stunWait = 0;
 			}
 		}
@@ -517,12 +539,24 @@ class enemyCircle {
 			this.hp = 0;
 			this.dead = true;
 			--enemyNum;
-		} else if (this.circle.p.x + this.circle.r < 0) {
+			if(SE_damageElf){
+				SE_damageElf.currentChange(0);
+				SE_damageElf.muteChange(false);
+				damageElfSoundOn = true;
+				damageElfPlayTime = SE_damageElf.sound.currentTime;
+			}
+	} else if (this.circle.p.x + this.circle.r < 0) {
 			--forestHp;
 			uiDisp.forestshakeornot = true;
 			this.hp = 0;
 			this.dead = true;
 			--enemyNum;
+			if(SE_damageForest){
+				SE_damageForest.currentChange(0);
+				SE_damageForest.muteChange(false);
+				damageForestSoundOn = true;
+				damageForestPlayTime = SE_damageForest.sound.currentTime;
+			}
 		}
 	}
 
@@ -553,13 +587,15 @@ function circleColCircle(_p1, _r1, _p2, _r2) {
 	return r <= _r1 + _r2;
 }
 
-// UI表示オブジェクト　主人公の耐久値、矢の残り弾数などの表示
+// パラメーター表示オブジェクト　主人公の耐久値、矢の残り弾数などの表示
 let uiDisp = {
+	// 戦闘画面のHPは矢の数の表示
 	elfShakeTime: 0,
 	elfshakeornot: false,
 	forestShakeTime: 0,
 	forestshakeornot: false,
-	shakeMaxTime: 15,
+	shakeMaxTime: 30,
+	shakeFrequency: 80,
 	statusDisplay: function (ctx) {
 		if (this.elfshakeornot == true) {
 			++this.elfShakeTime;
@@ -586,7 +622,7 @@ let uiDisp = {
 			uiTileSize,
 			uiTileSize,
 			uiTileSize * 2,
-			uiTileSize + 5 * Math.sin((this.forestShakeTime) * 120 * Math.PI / 180),
+			uiTileSize + 5 * Math.sin((this.forestShakeTime) * this.shakeFrequency * Math.PI / 180),
 			uiTileSize * 2,
 			uiTileSize * 2
 		);
@@ -598,7 +634,7 @@ let uiDisp = {
 				uiTileSize,
 				uiTileSize,
 				(uiTileSize * 2) + ((i + 1) * uiTileSize * 2),
-				uiTileSize + 5 * Math.sin((this.forestShakeTime) * 120 * Math.PI / 180),
+				uiTileSize + 5 * Math.sin((this.forestShakeTime) * this.shakeFrequency * Math.PI / 180),
 				uiTileSize * 2,
 				uiTileSize * 2
 			);
@@ -612,7 +648,7 @@ let uiDisp = {
 			uiTileSize,
 			uiTileSize,
 			uiTileSize + 128,
-			canvasH - uiTileSize * 4 - 8 + 5 * Math.sin((this.forestShakeTime) * 120 * Math.PI / 180),
+			canvasH - uiTileSize * 4 - 8 + 5 * Math.sin((this.forestShakeTime) * this.shakeFrequency * Math.PI / 180),
 			uiTileSize * 2,
 			uiTileSize * 2
 		);
@@ -624,7 +660,7 @@ let uiDisp = {
 				uiTileSize,
 				uiTileSize,
 				uiTileSize + 128 + ((i + 1) * uiTileSize * 2),
-				canvasH - uiTileSize * 4 - 8 + 5 * Math.sin((this.forestShakeTime) * 120 * Math.PI / 180),
+				canvasH - uiTileSize * 4 - 8 + 5 * Math.sin((this.forestShakeTime) * this.shakeFrequency * Math.PI / 180),
 				uiTileSize * 2,
 				uiTileSize * 2
 			);
@@ -639,7 +675,7 @@ let uiDisp = {
 			uiTileSize,
 			uiTileSize,
 			uiTileSize + 128,
-			canvasH - uiTileSize * 2 - 8 + 5 * Math.sin((this.forestShakeTime) * 120 * Math.PI / 180),
+			canvasH - uiTileSize * 2 - 8 + 5 * Math.sin((this.forestShakeTime) * this.shakeFrequency * Math.PI / 180),
 			uiTileSize * 2,
 			uiTileSize * 2
 		);
@@ -651,7 +687,7 @@ let uiDisp = {
 				uiTileSize,
 				uiTileSize,
 				uiTileSize + 128 + ((i + 1) * uiTileSize * 2),
-				canvasH - uiTileSize * 2 - 8 + 5 * Math.sin((this.forestShakeTime) * 120 * Math.PI / 180),
+				canvasH - uiTileSize * 2 - 8 + 5 * Math.sin((this.forestShakeTime) * this.shakeFrequency * Math.PI / 180),
 				uiTileSize * 2,
 				uiTileSize * 2
 			);
@@ -659,11 +695,245 @@ let uiDisp = {
 
 		// エルフ顔表示
 		img = document.getElementById("elffaceimg");
-		ctx.drawImage(img, 5 * Math.sin((this.elfShakeTime) * 120 * Math.PI / 180), canvasH - 128 - 8, 128, 128);
+		ctx.drawImage(img, 5 * Math.sin((this.elfShakeTime) * this.shakeFrequency * Math.PI / 180), canvasH - 128 - 8, 128, 128);
+	},
+	elfForestShakeReset: function(){
+		this.elfShakeTime = 0;
+		this.forestShakeTime = 0;
+		this.elfshakeornot = false;
+		this.forestshakeornot = false;
+	},
+
+	// メッセージウィンドウ表示
+	widowAlpha: 0.8,
+	innerTimer: 0,
+	cursorSwitchFreq: 6,
+	messageSpeed: messageSpeed_slow,
+	messageAllEnd: false,
+	textReceiver: "",
+	fontSize: 22,
+	lineHeight: 1.1,
+	messageFinish: false,
+	messageRowPick: 0,
+	messageLinePick: 0,
+	messageClicked: false,
+	messageDisplay: function (ctx, x, y, w, h, message) {
+		let img = document.getElementById("statusicon");
+
+		// メッセージウィンドウ
+		ctx.globalAlpha = this.widowAlpha;
+		ctx.drawImage(
+			img,
+			uiTileSize * 3,
+			uiTileSize * 0,
+			uiTileSize,
+			uiTileSize,
+			x + 2,
+			y + 2,
+			w - 4,
+			h - 4
+		);
+		ctx.globalAlpha = 1.0;
+		ctx.drawImage(
+			img,
+			uiTileSize * 2,
+			uiTileSize * 1,
+			uiTileSize / 2,
+			uiTileSize / 2,
+			x,
+			y,
+			uiTileSize,
+			uiTileSize
+		);
+		ctx.drawImage(
+			img,
+			uiTileSize * 2.5,
+			uiTileSize * 1,
+			uiTileSize / 2,
+			uiTileSize / 2,
+			x + w - uiTileSize,
+			y,
+			uiTileSize,
+			uiTileSize
+		);
+		ctx.drawImage(
+			img,
+			uiTileSize * 2,
+			uiTileSize * 1.5,
+			uiTileSize / 2,
+			uiTileSize / 2,
+			x,
+			y + h - uiTileSize,
+			uiTileSize,
+			uiTileSize
+		);
+		ctx.drawImage(
+			img,
+			uiTileSize * 2.5,
+			uiTileSize * 1.5,
+			uiTileSize / 2,
+			uiTileSize / 2,
+			x + w - uiTileSize,
+			y + h - uiTileSize,
+			uiTileSize,
+			uiTileSize
+		);
+
+		ctx.drawImage(
+			img,
+			uiTileSize * 3,
+			uiTileSize * 1,
+			uiTileSize / 2,
+			uiTileSize / 2,
+			x,
+			y + uiTileSize,
+			uiTileSize,
+			h - 2 * uiTileSize,
+		);
+		ctx.drawImage(
+			img,
+			uiTileSize * 3.5,
+			uiTileSize * 1,
+			uiTileSize / 2,
+			uiTileSize / 2,
+			x + w - uiTileSize,
+			y + uiTileSize,
+			uiTileSize,
+			h - 2 * uiTileSize,
+		);
+		ctx.drawImage(
+			img,
+			uiTileSize * 3.5,
+			uiTileSize * 1.5,
+			uiTileSize / 2,
+			uiTileSize / 2,
+			x + uiTileSize,
+			y,
+			w - 2 * uiTileSize,
+			uiTileSize,
+		);
+		ctx.drawImage(
+			img,
+			uiTileSize * 3,
+			uiTileSize * 1.5,
+			uiTileSize / 2,
+			uiTileSize / 2,
+			x + uiTileSize,
+			y + h - uiTileSize,
+			w - 2 * uiTileSize,
+			uiTileSize,
+		);
+
+		// メッセージ送り待ちカーソル
+		if(this.messageFinish){
+			ctx.drawImage(
+				img,
+				uiTileSize * 2 + (uiTileSize / 2 * Math.floor((this.innerTimer % (this.cursorSwitchFreq * 4)) / this.cursorSwitchFreq)),
+				this.messageAllEnd ? uiTileSize * 2.5 : uiTileSize * 2,
+				uiTileSize / 2,
+				uiTileSize / 2,
+				this.messageAllEnd ? x + w * 0.8 : x + ( w / 2 ) - ( uiTileSize / 2 ),
+				y + h - uiTileSize,
+				uiTileSize,
+				uiTileSize,
+			);
+		}
+
+		// ウィンドウ内に表示するテキスト
+		// サウンドに関して　メッセージ送り音は文字が一文字表示されるごとに鳴らす必要があるのでインスタンスから鳴らすが
+		// 　　　　　　　　　決定音(pushEnter)はクリック側に制御があるので鳴らす許可のブール値を変えるだけでいい
+		if(this.messageLinePick < message.length){
+			if(!this.messageFinish){
+				if(this.messageClicked == false){
+					if(clicknow){
+						this.textReceiver = "";
+						for(let i = 0 ; i < message[this.messageLinePick].length ;i++){
+							this.textReceiver += (message[this.messageLinePick].charAt(i));
+						}
+						if(this.messageLinePick >= message.length - 1){
+							this.messageAllEnd = true;
+						}
+						if(SE_message){
+							SE_message.muteChange(true);
+						}
+						pushEnterSoundOn = true;
+						this.messageClicked = true;
+						this.messageFinish = true;
+					}
+				}
+				if(!this.messageFinish){
+					pushEnterSoundOn = false;
+					if(this.innerTimer % this.messageSpeed == 0 ){
+						if(this.messageRowPick != message[this.messageLinePick].length){
+							if(SE_message){
+								SE_message.muteChange(true);
+							}					
+							if(message[this.messageLinePick].charAt(this.messageRowPick) != "　"){
+								if(SE_message){
+									SE_message.currentChange(0);
+									SE_message.muteChange(false);
+								}
+							}
+							if(message[this.messageLinePick].charAt(this.messageRowPick) == "\r"){
+								console.log("test1");
+							}
+							if(message[this.messageLinePick].charAt(this.messageRowPick) == "\f"){
+								console.log("test2");
+							}
+							this.textReceiver += (message[this.messageLinePick].charAt(this.messageRowPick));
+							this.messageRowPick++;
+						}else{
+							if(SE_message){
+								SE_message.muteChange(true);
+							}
+						if(this.messageLinePick >= message.length - 1){
+								this.messageAllEnd = true;
+							}
+							pushEnterSoundOn = true;
+							this.messageFinish = true;
+						}
+					}
+				}
+			}else{
+				if(this.messageClicked == false){
+					if(clicknow){
+						this.messageLinePick++;
+						this.messageRowPick = 0;
+						this.messageFinish = false;
+						this.textReceiver = "";
+						if(this.messageLinePick >= message.length){
+							this.messageAllEnd = false;
+							this.messageLinePick = 0;
+						}
+						if(SE_message){
+							SE_message.muteChange(true);
+						}
+						this.messageClicked = true;
+					}
+				}
+			}
+		}
+		for(let lines = this.textReceiver.split("\n"), i = 0 , l = lines.length; i < l ; i++){
+			let line = lines[i];
+			let addY = this.fontSize;
+			if ( i ) addY += this.fontSize * this.lineHeight * i ;
+			ctx.font="bold " + this.fontSize +"px serif";
+			ctx.textBaseline="top";
+			ctx.fillStyle = "white";
+			ctx.fillText(
+				line,
+				x + uiTileSize,
+				y + addY,
+			);
+			ctx.fillStyle = "black";						
+		}
+		this.innerTimer++;
+	},
+	messageClickedSwitch: function(_bool){
+		this.messageClicked = _bool;
 	}
-
+	// メッセージを画面に表示
 }
-
 // CSVデータからマップを生成する関数
 function drawMap(csv, ctx, imgTag){
 	let img = document.getElementById(imgTag);
@@ -682,5 +952,42 @@ function drawMap(csv, ctx, imgTag){
 			);
 
 		}
+	}
+}
+
+// ユーザーアクションを機に起動するサウンドクラス
+class soundMake{
+	constructor(_idTag, _isLoop, _volume, _mute, _loopTime, _loopBackTime){
+		this.sound = document.getElementById(_idTag);
+		this.sound.loop = _isLoop;
+		this.sound.volume = _volume;
+		this.sound.muted = _mute;
+		this.loopTime = _loopTime;
+		this.loopBackTime = _loopBackTime;
+	}
+	playFromStart(){
+		this.sound.currentTime = 0;
+		this.sound.play();
+	}
+	playResume(){
+		this.sound.play();
+	}
+	stop(){
+		this.sound.onpause();
+	}
+	stopToStart(){
+		this.sound.onpause();
+		this.sound.currentTime = 0;
+	}
+	loopBack(){
+		if(this.sound.currentTime > this.loopTime){
+			this.sound.currentTime -= this.loopBackTime;
+		}
+	}
+	currentChange(_time){
+		this.sound.currentTime = _time;
+	}
+	muteChange(_bool){
+		this.sound.muted = _bool;
 	}
 }
