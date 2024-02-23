@@ -1,3 +1,31 @@
+const browser_IE = 1;
+const browser_Edge = 2;
+const browser_Chrome = 3;
+const browser_Safari = 4;
+const browser_Firefox = 5;
+const browser_Opera = 6;
+
+let browser;
+let userAgent = window.navigator.userAgent;
+console.log(userAgent);
+
+if(userAgent.indexOf('MSIE') != -1 || userAgent.indexOf('Trident') != -1) {
+	browser = browser_IE;
+} else if(userAgent.indexOf('Edg') != -1 || userAgent.indexOf('Edge') != -1) {
+	browser = browser_Edge;
+} else if(userAgent.indexOf('Chrome') != -1) {
+	browser = browser_Chrome;
+} else if(userAgent.indexOf('Safari') != -1) {
+	browser = browser_Safari;
+} else if(userAgent.indexOf('Firefox') != -1) {
+	browser = browser_Firefox;
+} else if(userAgent.indexOf('Opera') != -1) {
+	browser = browser_Opera;
+} else {
+	browser = 0;
+}
+
+
 let canvasW = 800;
 let canvasH = 600;
 
