@@ -7,6 +7,7 @@ const browser_Opera = 6;
 
 let browser;
 let userAgent = window.navigator.userAgent;
+let SE_firefox;
 console.log(userAgent);
 
 if(userAgent.indexOf('MSIE') != -1 || userAgent.indexOf('Trident') != -1) {
@@ -61,6 +62,7 @@ const messageSpeed_normal = 3;
 const messageSpeed_slow = 4;
 const messageSpeed_verySlow = 5;
 
+let stageNum = 0;
 let enemyNum = 0;		// 敵の数 これが0になるタイミングで次のフェーズに移行したりゲームクリアにしたりする
 
 
@@ -539,21 +541,21 @@ class enemyCircle {
 		if (this.appearTime < elapsedTime) {
 			--this.hp;
 			if (this.hp <= 0) {
-				if(SE_defeatEnemy){
-					SE_defeatEnemy.currentChange(0);
-					SE_defeatEnemy.muteChange(false);
-					defeatEnemySoundOn = true;
-					defeatEnemyPlayTime = SE_defeatEnemy.sound.currentTime;
+				if(SE_array[pickSE(SE_defeatEnemy)]){
+					SE_array[pickSE(SE_defeatEnemy)].currentChange(0);
+					SE_array[pickSE(SE_defeatEnemy)].muteChange(false);
+					SE_set[pickSE(SE_defeatEnemy)][sound_soundOn] = true;
+					SE_set[pickSE(SE_defeatEnemy)][sound_playTime] = SE_array[pickSE(SE_defeatEnemy)].sound.currentTime;
 				}
 				this.dead = true;
 				--enemyNum;
 			}
 			if (this.enemyTypePreset.stunornot == true) {
-				if(SE_arrowHit){
-					SE_arrowHit.currentChange(0);
-					SE_arrowHit.muteChange(false);
-					arrowHitSoundOn = true;
-					arrowHitPlayTime = SE_arrowHit.sound.currentTime;
+				if(SE_array[pickSE(SE_arrowHit)]){
+					SE_array[pickSE(SE_arrowHit)].currentChange(0);
+					SE_array[pickSE(SE_arrowHit)].muteChange(false);
+					SE_set[pickSE(SE_arrowHit)][sound_soundOn] = true;
+					SE_set[pickSE(SE_arrowHit)][sound_playTime] = SE_array[pickSE(SE_arrowHit)].sound.currentTime;
 				}
 				this.stunWait = 0;
 			}
@@ -567,11 +569,11 @@ class enemyCircle {
 			this.hp = 0;
 			this.dead = true;
 			--enemyNum;
-			if(SE_damageElf){
-				SE_damageElf.currentChange(0);
-				SE_damageElf.muteChange(false);
-				damageElfSoundOn = true;
-				damageElfPlayTime = SE_damageElf.sound.currentTime;
+			if(SE_array[pickSE(SE_damageElf)]){
+				SE_array[pickSE(SE_damageElf)].currentChange(0);
+				SE_array[pickSE(SE_damageElf)].muteChange(false);
+				SE_set[pickSE(SE_damageElf)][sound_soundOn] = true;
+				SE_set[pickSE(SE_damageElf)][sound_playTime] = SE_array[pickSE(SE_damageElf)].sound.currentTime;
 			}
 	} else if (this.circle.p.x + this.circle.r < 0) {
 			--forestHp;
@@ -579,11 +581,11 @@ class enemyCircle {
 			this.hp = 0;
 			this.dead = true;
 			--enemyNum;
-			if(SE_damageForest){
-				SE_damageForest.currentChange(0);
-				SE_damageForest.muteChange(false);
-				damageForestSoundOn = true;
-				damageForestPlayTime = SE_damageForest.sound.currentTime;
+			if(SE_array[pickSE(SE_damageForest)]){
+				SE_array[pickSE(SE_damageForest)].currentChange(0);
+				SE_array[pickSE(SE_damageForest)].muteChange(false);
+				SE_set[pickSE(SE_damageForest)][sound_soundOn] = true;
+				SE_set[pickSE(SE_damageForest)][sound_playTime] = SE_array[pickSE(SE_damageForest)].sound.currentTime;
 			}
 		}
 	}
@@ -881,25 +883,25 @@ let uiDisp = {
 						if(this.messageLinePick >= message.length - 1){
 							this.messageAllEnd = true;
 						}
-						if(SE_message){
-							SE_message.muteChange(true);
+						if(SE_array[pickSE(SE_message)]){
+							SE_array[pickSE(SE_message)].muteChange(true);
 						}
-						pushEnterSoundOn = true;
+						SE_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
 						this.messageClicked = true;
 						this.messageFinish = true;
 					}
 				}
 				if(!this.messageFinish){
-					pushEnterSoundOn = false;
+					SE_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
 					if(this.innerTimer % this.messageSpeed == 0 ){
 						if(this.messageRowPick != message[this.messageLinePick].length){
-							if(SE_message){
-								SE_message.muteChange(true);
+							if(SE_array[pickSE(SE_message)]){
+								SE_array[pickSE(SE_message)].muteChange(true);
 							}					
 							if(message[this.messageLinePick].charAt(this.messageRowPick) != "　"){
-								if(SE_message){
-									SE_message.currentChange(0);
-									SE_message.muteChange(false);
+								if(SE_array[pickSE(SE_message)]){
+									SE_array[pickSE(SE_message)].currentChange(0);
+									SE_array[pickSE(SE_message)].muteChange(false);
 								}
 							}
 							if(message[this.messageLinePick].charAt(this.messageRowPick) == "\r"){
@@ -911,13 +913,13 @@ let uiDisp = {
 							this.textReceiver += (message[this.messageLinePick].charAt(this.messageRowPick));
 							this.messageRowPick++;
 						}else{
-							if(SE_message){
-								SE_message.muteChange(true);
+							if(SE_array[pickSE(SE_message)]){
+								SE_array[pickSE(SE_message)].muteChange(true);
 							}
 						if(this.messageLinePick >= message.length - 1){
 								this.messageAllEnd = true;
 							}
-							pushEnterSoundOn = true;
+							SE_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
 							this.messageFinish = true;
 						}
 					}
@@ -933,8 +935,8 @@ let uiDisp = {
 							this.messageAllEnd = false;
 							this.messageLinePick = 0;
 						}
-						if(SE_message){
-							SE_message.muteChange(true);
+						if(SE_array[pickSE(SE_message)]){
+							SE_array[pickSE(SE_message)].muteChange(true);
 						}
 						this.messageClicked = true;
 					}
@@ -985,12 +987,13 @@ function drawMap(csv, ctx, imgTag){
 
 // ユーザーアクションを機に起動するサウンドクラス
 class soundMake{
-	constructor(_idTag, _isLoop, _volume, _mute, _loopTime, _loopBackTime){
+	constructor(_idTag, _isLoop, _volume, _mute, _loopTiming, _loopBackTime){
 		this.sound = document.getElementById(_idTag);
+		this.idTag = _idTag;
 		this.sound.loop = _isLoop;
 		this.sound.volume = _volume;
 		this.sound.muted = _mute;
-		this.loopTime = _loopTime;
+		this.loopTiming = _loopTiming;
 		this.loopBackTime = _loopBackTime;
 	}
 	playFromStart(){
@@ -1008,7 +1011,7 @@ class soundMake{
 		this.sound.currentTime = 0;
 	}
 	loopBack(){
-		if(this.sound.currentTime > this.loopTime){
+		if(this.sound.currentTime > this.loopTiming){
 			this.sound.currentTime -= this.loopBackTime;
 		}
 	}
@@ -1017,5 +1020,36 @@ class soundMake{
 	}
 	muteChange(_bool){
 		this.sound.muted = _bool;
+	}
+}
+
+function soundRegardlessInput(){
+	for(let i = 0 ; i < SE_array.length ; i++){
+		if(SE_array[i].sound.loop){
+			if(SE_set[i][sound_soundOn]){
+				if( SE_array[i].sound.currentTime < SE_set[i][sound_playTime]){
+					if(SE_array[i]){
+						SE_array[i].muteChange(true);
+						SE_set[i][sound_soundOn] = false;
+					}
+				}
+				SE_set[i][sound_playTime] = SE_array[i].sound.currentTime;
+			}	
+		}
+	}
+}
+
+function enemySet(_stageNum){
+	enemyArray.splice(0);
+	if(_stageNum == 0){
+		for(let i = 0 ; i < 10 ; i++){
+			enemyArray.push(new enemyCircle( canvasW + 50 , 472 - 30 - (i * 30) % 120, i * 140, 0, goblinJump));
+			enemyArray.push(new enemyCircle( canvasW + 50 , 472 - 60 - (i * 30) % 120, i * 140 + 40, 0, goblin));
+		}
+	}
+	if(_stageNum == 1){
+		for(let i = 0 ; i < 10 ; i++){
+			enemyArray.push(new enemyCircle( canvasW + 50 , (i * 60) % canvasH, i * 60 + 40, 0, goblinAim));
+		}
 	}
 }

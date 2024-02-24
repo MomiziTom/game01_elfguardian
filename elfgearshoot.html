@@ -52,11 +52,7 @@
 				for(let i = 0 ; i < arrowObject ; i++){
 					arrowArray.push(new arrow());
 				}
-				for(let i = 0 ; i < 1 ; i++){
-					enemyArray.push(new enemyCircle( canvasW + 50 , 472 - 30 - (i * 30) % 120, i * 80, 0, goblinJump));
-					enemyArray.push(new enemyCircle( canvasW + 50 , 472 - 60 - (i * 30) % 120, i * 80 + 40, 0, goblin));
-				}
-
+				enemySet(stageNum);
 				loop();
 			});
 
@@ -84,5 +80,6 @@
 		<audio id="SE_defeatEnemy" src="sound\ダメージ_レトロ_その３.mp3" ></audio>
 		<audio id="SE_damageElf" src="sound\ダメージを与える・受ける_レトロ_その２.mp3" ></audio>
 		<audio id="SE_damageForest" src="sound\ゴゴッ_動かす_レトロ_短.mp3" ></audio>
+		<audio id="SE_firefox" src="sound\会話24.mp3" ></audio>
 	</body>
 </html>

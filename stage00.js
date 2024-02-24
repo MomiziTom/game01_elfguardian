@@ -1,27 +1,51 @@
 let numberAnimePreset = new animePreset("numberimg", 4, 4, 16);
 let arrowAnimePreset = new animePreset("arrowimg", 9, 4, 8);
-let SE_message;
-let SE_pushEnter;
-let SE_arrowShoot;
-let SE_arrowFly;
-let SE_reload;
-let SE_arrowHit;
-let SE_defeatEnemy;
-let SE_damageElf;
-let SE_damageForest;
+let SE_message = "SE_message";
+let SE_pushEnter = "SE_pushEnter";
+let SE_arrowShoot = "SE_arrowShoot";
+let SE_arrowFly = "SE_arrowFly";
+let SE_reload = "SE_reload";
+let SE_arrowHit = "SE_arrowHit";
+let SE_defeatEnemy = "SE_defeatEnemy";
+let SE_damageElf = "SE_damageElf";
+let SE_damageForest = "SE_damageForest";
+
+let SEVolume1 = 0.05;	// 通常音量
+let SEVolume2 = 0.1;	// 元音源が小さい時用
+let SEVolume3 = 0.03;	// 小さめの音にしたい用
+
+const sound_idTag = 0;
+const sound_isLoop = 1;
+const sound_volume = 2;
+const sound_mute = 3;
+const sound_loopTiming = 4;
+const sound_loopBackTime = 5;
+const sound_soundOn = 6;
+const sound_playTime = 7;
+
+let SE_set =[	// _idTag, _isLoop, _volume, _mute, _loopTiming, _loopBackTime, SoundOnSwitch, playTime
+	["SE_message",true,SEVolume1,true,0,0,false,0],
+	["SE_pushEnter",false,SEVolume1,false,0,0,false,0],
+	["SE_arrowShoot",false,SEVolume1,false,0,0,false,0],
+	["SE_arrowFly",false,SEVolume1,false,0,0,false,0],
+	["SE_reload",false,SEVolume2,false,0,0,false,0],
+	["SE_arrowHit",true,SEVolume1,true,0,0,false,0],
+	["SE_defeatEnemy",true,SEVolume1,true,0,0,false,0],
+	["SE_damageElf",true,SEVolume2,true,0,0,false,0],
+	["SE_damageForest",true,SEVolume2,true,0,0,false,0],
+];
+
+function pickSE(_idTag){
+	for(let i = 0 ; i < SE_set.length ; i++){
+		if(SE_set[i][sound_idTag] === _idTag){
+			return i;
+		}
+	}
+}
+
+let SE_array = [];
 
 let audioswitch = false;
-let pushEnterSoundOn = false;
-let arrowShootSoundOn = false;
-let reloadSoundOn = false;
-let arrowHitSoundOn = false;
-let arrowHitPlayTime = 0;
-let defeatEnemySoundOn = false;
-let defeatEnemyPlayTime = 0;
-let damageElfSoundOn = false;
-let damageElfPlayTime = 0;
-let damageForestSoundOn = false;
-let damageForestPlayTime = 0;
 
 let goblin = new enemyTypePreset(
 	30,
@@ -47,6 +71,19 @@ let goblinJump = new enemyTypePreset(
 	0,
 	true,
 	aim_off
+);
+
+let goblinAim = new enemyTypePreset(
+	30,
+	2,
+	enemyMove_str,
+	numberAnimePreset,
+	1.5,
+	80,
+	5,
+	0,
+	true,
+	aim_homing
 );
 
 /* ローカルでテストする際に使う設定　サーバー上にアップロードする際は消すこと*/
