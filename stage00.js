@@ -9,6 +9,9 @@ let SE_arrowHit = "SE_arrowHit";
 let SE_defeatEnemy = "SE_defeatEnemy";
 let SE_damageElf = "SE_damageElf";
 let SE_damageForest = "SE_damageForest";
+let SE_battleEnd ="SE_battleEnd";
+let SE_win ="SE_win";
+let SE_lose ="SE_lose";
 
 let SEVolume1 = 0.05;	// 通常音量
 let SEVolume2 = 0.1;	// 元音源が小さい時用
@@ -33,6 +36,9 @@ let SE_set =[	// _idTag, _isLoop, _volume, _mute, _loopTiming, _loopBackTime, So
 	["SE_defeatEnemy",true,SEVolume1,true,0,0,false,0],
 	["SE_damageElf",true,SEVolume2,true,0,0,false,0],
 	["SE_damageForest",true,SEVolume2,true,0,0,false,0],
+	["SE_battleEnd",true,SEVolume2,true,0,0,false,0],
+	["SE_win",true,SEVolume1,true,0,0,false,0],
+	["SE_lose",true,SEVolume1,true,0,0,false,0],
 ];
 
 function pickSE(_idTag){

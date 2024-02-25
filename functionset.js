@@ -7,7 +7,7 @@ const browser_Opera = 6;
 
 let browser;
 let userAgent = window.navigator.userAgent;
-let SE_firefox;
+let SE_firefox;		// ブラウザがfirefoxの際無音にならないようにするために使用
 console.log(userAgent);
 
 if(userAgent.indexOf('MSIE') != -1 || userAgent.indexOf('Trident') != -1) {
@@ -29,6 +29,7 @@ if(userAgent.indexOf('MSIE') != -1 || userAgent.indexOf('Trident') != -1) {
 
 let canvasW = 800;
 let canvasH = 600;
+let fps = 60;
 
 const gravity = 2;
 const arrowimgW = 96;
@@ -541,22 +542,12 @@ class enemyCircle {
 		if (this.appearTime < elapsedTime) {
 			--this.hp;
 			if (this.hp <= 0) {
-				if(SE_array[pickSE(SE_defeatEnemy)]){
-					SE_array[pickSE(SE_defeatEnemy)].currentChange(0);
-					SE_array[pickSE(SE_defeatEnemy)].muteChange(false);
-					SE_set[pickSE(SE_defeatEnemy)][sound_soundOn] = true;
-					SE_set[pickSE(SE_defeatEnemy)][sound_playTime] = SE_array[pickSE(SE_defeatEnemy)].sound.currentTime;
-				}
+				soundStartRegardlessInput(SE_defeatEnemy);
 				this.dead = true;
 				--enemyNum;
 			}
 			if (this.enemyTypePreset.stunornot == true) {
-				if(SE_array[pickSE(SE_arrowHit)]){
-					SE_array[pickSE(SE_arrowHit)].currentChange(0);
-					SE_array[pickSE(SE_arrowHit)].muteChange(false);
-					SE_set[pickSE(SE_arrowHit)][sound_soundOn] = true;
-					SE_set[pickSE(SE_arrowHit)][sound_playTime] = SE_array[pickSE(SE_arrowHit)].sound.currentTime;
-				}
+				soundStartRegardlessInput(SE_arrowHit);
 				this.stunWait = 0;
 			}
 		}
@@ -569,24 +560,15 @@ class enemyCircle {
 			this.hp = 0;
 			this.dead = true;
 			--enemyNum;
-			if(SE_array[pickSE(SE_damageElf)]){
-				SE_array[pickSE(SE_damageElf)].currentChange(0);
-				SE_array[pickSE(SE_damageElf)].muteChange(false);
-				SE_set[pickSE(SE_damageElf)][sound_soundOn] = true;
-				SE_set[pickSE(SE_damageElf)][sound_playTime] = SE_array[pickSE(SE_damageElf)].sound.currentTime;
-			}
+			soundStartRegardlessInput(SE_damageElf);
 	} else if (this.circle.p.x + this.circle.r < 0) {
 			--forestHp;
 			uiDisp.forestshakeornot = true;
 			this.hp = 0;
 			this.dead = true;
 			--enemyNum;
-			if(SE_array[pickSE(SE_damageForest)]){
-				SE_array[pickSE(SE_damageForest)].currentChange(0);
-				SE_array[pickSE(SE_damageForest)].muteChange(false);
-				SE_set[pickSE(SE_damageForest)][sound_soundOn] = true;
-				SE_set[pickSE(SE_damageForest)][sound_playTime] = SE_array[pickSE(SE_damageForest)].sound.currentTime;
-			}
+			soundStartRegardlessInput(SE_damageForest);
+
 		}
 	}
 
@@ -754,8 +736,8 @@ let uiDisp = {
 		ctx.globalAlpha = this.widowAlpha;
 		ctx.drawImage(
 			img,
-			uiTileSize * 3,
-			uiTileSize * 0,
+			uiTileSize * 2,
+			uiTileSize * 2,
 			uiTileSize,
 			uiTileSize,
 			x + 2,
@@ -767,7 +749,7 @@ let uiDisp = {
 		ctx.drawImage(
 			img,
 			uiTileSize * 2,
-			uiTileSize * 1,
+			uiTileSize * 0,
 			uiTileSize / 2,
 			uiTileSize / 2,
 			x,
@@ -778,7 +760,7 @@ let uiDisp = {
 		ctx.drawImage(
 			img,
 			uiTileSize * 2.5,
-			uiTileSize * 1,
+			uiTileSize * 0,
 			uiTileSize / 2,
 			uiTileSize / 2,
 			x + w - uiTileSize,
@@ -789,7 +771,7 @@ let uiDisp = {
 		ctx.drawImage(
 			img,
 			uiTileSize * 2,
-			uiTileSize * 1.5,
+			uiTileSize * 0.5,
 			uiTileSize / 2,
 			uiTileSize / 2,
 			x,
@@ -800,7 +782,7 @@ let uiDisp = {
 		ctx.drawImage(
 			img,
 			uiTileSize * 2.5,
-			uiTileSize * 1.5,
+			uiTileSize * 0.5,
 			uiTileSize / 2,
 			uiTileSize / 2,
 			x + w - uiTileSize,
@@ -812,7 +794,7 @@ let uiDisp = {
 		ctx.drawImage(
 			img,
 			uiTileSize * 3,
-			uiTileSize * 1,
+			uiTileSize * 0,
 			uiTileSize / 2,
 			uiTileSize / 2,
 			x,
@@ -823,7 +805,7 @@ let uiDisp = {
 		ctx.drawImage(
 			img,
 			uiTileSize * 3.5,
-			uiTileSize * 1,
+			uiTileSize * 0,
 			uiTileSize / 2,
 			uiTileSize / 2,
 			x + w - uiTileSize,
@@ -834,7 +816,7 @@ let uiDisp = {
 		ctx.drawImage(
 			img,
 			uiTileSize * 3.5,
-			uiTileSize * 1.5,
+			uiTileSize * 0.5,
 			uiTileSize / 2,
 			uiTileSize / 2,
 			x + uiTileSize,
@@ -845,7 +827,7 @@ let uiDisp = {
 		ctx.drawImage(
 			img,
 			uiTileSize * 3,
-			uiTileSize * 1.5,
+			uiTileSize * 0.5,
 			uiTileSize / 2,
 			uiTileSize / 2,
 			x + uiTileSize,
@@ -859,7 +841,7 @@ let uiDisp = {
 			ctx.drawImage(
 				img,
 				uiTileSize * 2 + (uiTileSize / 2 * Math.floor((this.innerTimer % (this.cursorSwitchFreq * 4)) / this.cursorSwitchFreq)),
-				this.messageAllEnd ? uiTileSize * 2.5 : uiTileSize * 2,
+				this.messageAllEnd ? uiTileSize * 1.5 : uiTileSize * 1,
 				uiTileSize / 2,
 				uiTileSize / 2,
 				this.messageAllEnd ? x + w * 0.8 : x + ( w / 2 ) - ( uiTileSize / 2 ),
@@ -883,9 +865,7 @@ let uiDisp = {
 						if(this.messageLinePick >= message.length - 1){
 							this.messageAllEnd = true;
 						}
-						if(SE_array[pickSE(SE_message)]){
-							SE_array[pickSE(SE_message)].muteChange(true);
-						}
+						soundStartRegardlessInput(SE_message)
 						SE_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
 						this.messageClicked = true;
 						this.messageFinish = true;
@@ -895,14 +875,8 @@ let uiDisp = {
 					SE_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
 					if(this.innerTimer % this.messageSpeed == 0 ){
 						if(this.messageRowPick != message[this.messageLinePick].length){
-							if(SE_array[pickSE(SE_message)]){
-								SE_array[pickSE(SE_message)].muteChange(true);
-							}					
 							if(message[this.messageLinePick].charAt(this.messageRowPick) != "　"){
-								if(SE_array[pickSE(SE_message)]){
-									SE_array[pickSE(SE_message)].currentChange(0);
-									SE_array[pickSE(SE_message)].muteChange(false);
-								}
+								soundStartRegardlessInput(SE_message)
 							}
 							if(message[this.messageLinePick].charAt(this.messageRowPick) == "\r"){
 								console.log("test1");
@@ -913,9 +887,6 @@ let uiDisp = {
 							this.textReceiver += (message[this.messageLinePick].charAt(this.messageRowPick));
 							this.messageRowPick++;
 						}else{
-							if(SE_array[pickSE(SE_message)]){
-								SE_array[pickSE(SE_message)].muteChange(true);
-							}
 						if(this.messageLinePick >= message.length - 1){
 								this.messageAllEnd = true;
 							}
@@ -934,9 +905,6 @@ let uiDisp = {
 						if(this.messageLinePick >= message.length){
 							this.messageAllEnd = false;
 							this.messageLinePick = 0;
-						}
-						if(SE_array[pickSE(SE_message)]){
-							SE_array[pickSE(SE_message)].muteChange(true);
 						}
 						this.messageClicked = true;
 					}
@@ -961,9 +929,159 @@ let uiDisp = {
 	},
 	messageClickedSwitch: function(_bool){
 		this.messageClicked = _bool;
+	},
+
+	// バトル開始の合図(ready...)を画面に表示
+	readyTimer: 0,
+	startTimer: 0,
+	readyDisp: function(ctx){
+		this.startTimer = 0;
+		this.readyTimer++;
+		let img = document.getElementById("statusicon");
+		let coefficient = 3.0 - this.readyTimer / (fps * 0.3);
+		if(coefficient < 1.0){
+			coefficient = 1.0
+		}
+		ctx.globalAlpha = this.readyTimer / (fps * 0.3);
+		ctx.drawImage(
+			img,
+			uiTileSize * 0,
+			uiTileSize * 4,
+			uiTileSize * 4,
+			uiTileSize,
+			canvasW / 2 - (uiTileSize * 4 * coefficient),
+			canvasH / 2 - (uiTileSize * coefficient),
+			(uiTileSize * 8) * coefficient,
+			(uiTileSize * 2) * coefficient
+		);
+		ctx.globalAlpha = 1.0;
+	},
+	startDisp: function(ctx){
+		this.readyTimer = 0;
+		this.startTimer++;
+		let img = document.getElementById("statusicon");
+		let coefficient = 1.0 + this.startTimer / (fps * 0.05);
+		ctx.globalAlpha = 1.0 - this.startTimer / (fps * 0.25);
+		if(this.startTimer / (fps * 0.25) > 1.0){
+			ctx.globalAlpha =0;
+		}
+		ctx.drawImage(
+			img,
+			uiTileSize * 0,
+			uiTileSize * 5,
+			uiTileSize * 4,
+			uiTileSize,
+			canvasW / 2 - (uiTileSize * 4 * coefficient),
+			canvasH / 2 - (uiTileSize * coefficient),
+			(uiTileSize * 8) * coefficient,
+			(uiTileSize * 2) * coefficient
+		);
+		ctx.globalAlpha = 1.0;
+
+	},
+
+	// バトル終了の合図(Finish!)を画面に表示
+	finishTimer: 0,
+	winLoseSE: false,
+	finishDisp: function(ctx, _winOrLose){
+		this.finishTimer++;
+		let coefficient1;
+		let coefficient2;
+		let changeTime1 = fps * 1.3;
+		let changeTime2 = changeTime1 + fps * 3.2;
+		let img = document.getElementById("statusicon");
+		if(this.finishTimer < changeTime1){
+			coefficient1 = 3.0 - this.finishTimer / (fps * 0.05);
+			if(coefficient1 < 1.0){
+				coefficient1 = 1.0
+			}
+			ctx.globalAlpha = this.finishTimer / (fps * 0.25);
+		}
+		if(this.finishTimer >= changeTime1){
+			coefficient1 = 1.0 + (this.finishTimer - changeTime1) / (fps * 0.05);
+			ctx.globalAlpha = 1.0 - (this.finishTimer - changeTime1) / (fps * 0.25);
+			if((this.finishTimer - changeTime1) / (fps * 0.25) > 1.0){
+				ctx.globalAlpha =0;
+				this.winLoseStart = true;
+			}		
+		}
+			ctx.drawImage(
+			img,
+			uiTileSize * 0,
+			uiTileSize * 6,
+			uiTileSize * 4,
+			uiTileSize,
+			canvasW / 2 - (uiTileSize * 4 * coefficient1),
+			canvasH / 2 - (uiTileSize * coefficient1),
+			(uiTileSize * 8) * coefficient1,
+			(uiTileSize * 2) * coefficient1
+		);
+		ctx.globalAlpha = 1.0;
+
+		if(this.finishTimer >= changeTime1){
+			if(!this.winLoseSE){
+				if(_winOrLose == battle_win){
+					soundStartRegardlessInput(SE_win);
+				}else{
+					soundStartRegardlessInput(SE_lose);
+				}
+				this.winLoseSE = true;
+			}
+			if(this.finishTimer < changeTime2){
+				coefficient2 = 3.0 - this.finishTimer / (fps * 0.05);
+				if(coefficient2 < 1.0){
+					coefficient2 = 1.0
+				}
+				ctx.globalAlpha = (this.finishTimer - changeTime1) / (fps * 0.25);
+			}
+			if(this.finishTimer >= changeTime2){
+				coefficient2 = 1.0 + (this.finishTimer - changeTime2) / (fps * 0.05);
+				ctx.globalAlpha = 1.0 - (this.finishTimer - changeTime2) / (fps * 0.25);
+				if((this.finishTimer - changeTime2) / (fps * 0.25) > 1.0){
+					ctx.globalAlpha =0;
+					this.winLoseStart = true;
+				}		
+			}
+			let selectV1 = 0;
+			let selectV2 = 0;
+			selectV1 = _winOrLose == battle_win ? 7 : 8;
+			ctx.drawImage(
+				img,
+				uiTileSize * 0,
+				uiTileSize * selectV1,
+				uiTileSize * 4,
+				uiTileSize,
+				canvasW / 2 - (uiTileSize * 2 * 4 * coefficient2),
+				canvasH / 2 - (uiTileSize * 2 * coefficient2),
+				(uiTileSize * 2 * 8) * coefficient2,
+				(uiTileSize * 2 * 2) * coefficient2
+			);
+			if(_winOrLose != battle_win){
+				selectV2 = _winOrLose == battle_elfLost ? 9 : 9.5;
+				ctx.drawImage(
+					img,
+					uiTileSize * 0,
+					uiTileSize * selectV2,
+					uiTileSize * 4,
+					uiTileSize / 2,
+					canvasW / 2 - (uiTileSize * 2 * 4 * coefficient2),
+					canvasH / 2 + (uiTileSize * 2 * coefficient2),
+					(uiTileSize * 2 * 8) * coefficient2,
+					(uiTileSize * 2) * coefficient2
+				);
+			}
+	
+		}
+		ctx.globalAlpha = 1.0;
+
+	},
+	finishTimerReset: function(){
+		this.finishTimer = 0;
+		this.winLoseSE = false;
 	}
-	// メッセージを画面に表示
+
 }
+
 // CSVデータからマップを生成する関数
 function drawMap(csv, ctx, imgTag){
 	let img = document.getElementById(imgTag);
@@ -1023,7 +1141,17 @@ class soundMake{
 	}
 }
 
-function soundRegardlessInput(){
+function soundStartRegardlessInput(_idTag){
+	let SE = pickSE(_idTag);
+	if(SE_array[SE]){
+		SE_array[SE].currentChange(0);
+		SE_array[SE].muteChange(false);
+		SE_set[SE][sound_soundOn] = true;
+		SE_set[SE][sound_playTime] = SE_array[SE].sound.currentTime;
+	}
+
+}
+function soundStopRegardlessInput(){
 	for(let i = 0 ; i < SE_array.length ; i++){
 		if(SE_array[i].sound.loop){
 			if(SE_set[i][sound_soundOn]){
@@ -1039,6 +1167,7 @@ function soundRegardlessInput(){
 	}
 }
 
+
 function enemySet(_stageNum){
 	enemyArray.splice(0);
 	if(_stageNum == 0){
@@ -1052,4 +1181,102 @@ function enemySet(_stageNum){
 			enemyArray.push(new enemyCircle( canvasW + 50 , (i * 60) % canvasH, i * 60 + 40, 0, goblinAim));
 		}
 	}
+}
+
+// 初期化処理。addEventListener等マウス操作入力の開始など
+function Initialization(){
+	document.getElementById("field").addEventListener(
+		"mousemove",
+		function (event) {
+			if(InputOk){
+				mouseP.setPoint(event.offsetX, event.offsetY);
+			}
+		}
+	);
+	document.getElementById("field").addEventListener(
+		"mousedown",
+		function () {
+			if(InputOk){
+				clicknow = true;
+				if(SE_array[pickSE(SE_pushEnter)]){
+					if(SE_set[pickSE(SE_pushEnter)][sound_soundOn]){
+						SE_array[pickSE(SE_pushEnter)].playFromStart();
+						SE_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
+					}
+				}
+			}
+		}
+	);
+	document.getElementById("field").addEventListener(
+		"mouseup",
+		function () {
+			clicknow = false;
+			if(InputOk){
+				clickup = true;
+				if (circleColCircle(mouseP, 1, archerCircle.p, archerCircle.r)) {
+					if(SE_set[pickSE(SE_reload)][sound_soundOn]){
+						if(SE_array[pickSE(SE_reload)]){
+							SE_array[pickSE(SE_reload)].playFromStart();
+							SE_set[pickSE(SE_reload)][sound_soundOn] = false;
+						}
+					}
+				}else {
+					if(SE_set[pickSE(SE_arrowShoot)][sound_soundOn]){
+						if(SE_array[pickSE(SE_arrowShoot)]){
+							SE_array[pickSE(SE_arrowShoot)].playFromStart();
+							if(arrowRemain > 0){
+								SE_array[pickSE(SE_arrowFly)].playFromStart();
+							}
+							SE_set[pickSE(SE_arrowShoot)][sound_soundOn] = false;
+						}
+					}
+				}
+			}
+		}
+	);
+	document.getElementById("field").addEventListener(
+		"mouseenter",
+		function () {
+				document.body.style.cursor = "crosshair";
+				reticleOn = true;
+		}
+	);
+	document.getElementById("field").addEventListener(
+		"mouseleave",
+		function () {
+				document.body.style.cursor = "default";
+				reticleOn = false;
+		}
+	);
+	document.body.addEventListener(
+		"click",
+		function(){
+			if(audioswitch == false){
+				for(let i = 0 ; i < SE_set.length ; i ++){
+					SE_array.push(new soundMake(
+						SE_set[i][sound_idTag],
+						SE_set[i][sound_isLoop],
+						SE_set[i][sound_volume],
+						SE_set[i][sound_mute],
+						SE_set[i][sound_loopTiming],
+						SE_set[i][sound_loopBackTime]
+						)
+					)
+					if(SE_array[i].sound.loop){
+						SE_array[i].playFromStart();
+					}
+					console.log(i + SE_array[i].idTag + " loaded");
+				}
+				if(browser == browser_Firefox){	// 無音対策
+					SE_firefox = document.getElementById("SE_firefox");
+					SE_firefox.loop = true;
+					SE_firefox.volume = 0.0000001;
+					SE_firefox.play();
+				}
+				console.log("sound loaded");
+				audioswitch = true;
+			}	
+		}
+	)
+
 }

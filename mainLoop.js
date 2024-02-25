@@ -6,7 +6,7 @@ const battle_win = 1;
 const battle_elfLost = 2;
 const battle_forestLost = 3;
 
-let gameState = gState_intermission;
+let gameState = gState_title;
 
 let elapsedTime = 0;	// 経過時間変数
 let waveTime = 0;		// ウェーブ中での経過時間変数
@@ -16,7 +16,9 @@ let testangle=0;
 let testU;
 let testV;
 let gameover = false;
-let battle_WinOrLost = 0;
+let battleWinOrLost = 0;
+let battleBeforeTime = 0;
+let battleStart = false;
 let battleAfterTime = 0;
 let InputOk = true;
 let mouseP = new Point(0,0);
@@ -26,8 +28,10 @@ let arrowRemain = arrowUsage;	// 射れる矢の数
 let arrowObject = 40;	// 画面上に表示できる矢の最大数。これ以上の数の矢を放つと一番最初に放たれた矢から順に再計算、再表示される
 let useArrowIndex = 0;	// 次に発射されるarrowArrayのインデックス番号。0～arrowObjectの値をとる
 
-let elfHp = 5;
-let forestHp = 15;
+let elfMaxHp = 5;
+let elfHp = elfMaxHp;
+let forestMaxHp = 2;
+let forestHp = forestMaxHp;
 let alpha = 0.3;
 let aimCircle = 30;
 let reticleOn = false;
@@ -38,122 +42,27 @@ let chargevalue = 0;
 
 let arrowArray = new Array();
 let enemyArray = new Array();
-
+const battleAfterUntilEnd = 5 * fps;
 // ゲーム操作受付、計算処理部分
 function update(){
-	document.getElementById("field").addEventListener(
-		"mousemove",
-		function (event) {
-			if(InputOk){
-				mouseP.setPoint(event.offsetX, event.offsetY);
-			}
-		}
-	);
-	document.getElementById("field").addEventListener(
-		"mousedown",
-		function () {
-			if(InputOk){
-				clicknow = true;
-				if(SE_array[pickSE(SE_pushEnter)]){
-					if(SE_set[pickSE(SE_pushEnter)][sound_soundOn]){
-						SE_array[pickSE(SE_pushEnter)].playFromStart();
-						SE_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
-					}
-				}
-			}
-		}
-	);
-	document.getElementById("field").addEventListener(
-		"mouseup",
-		function () {
-			clicknow = false;
-			if(InputOk){
-				clickup = true;
-				if (circleColCircle(mouseP, 1, archerCircle.p, archerCircle.r)) {
-					if(SE_set[pickSE(SE_reload)][sound_soundOn]){
-						if(SE_array[pickSE(SE_reload)]){
-							SE_array[pickSE(SE_reload)].playFromStart();
-							SE_set[pickSE(SE_reload)][sound_soundOn] = false;
-						}
-					}
-				}else {
-					if(SE_set[pickSE(SE_arrowShoot)][sound_soundOn]){
-						if(SE_array[pickSE(SE_arrowShoot)]){
-							SE_array[pickSE(SE_arrowShoot)].playFromStart();
-							if(arrowRemain > 0){
-								SE_array[pickSE(SE_arrowFly)].playFromStart();
-							}
-							SE_set[pickSE(SE_arrowShoot)][sound_soundOn] = false;
-						}
-					}
-				}
-			}
-		}
-	);
-	document.getElementById("field").addEventListener(
-		"mouseenter",
-		function () {
-			document.body.style.cursor = "none";
-			reticleOn = true;
-		}
-	);
-	document.getElementById("field").addEventListener(
-		"mouseleave",
-		function () {
-			document.body.style.cursor = "default";
-			reticleOn = false;
-		}
-	);
-	document.body.addEventListener(
-		"click",
-		function(){
-			if(audioswitch == false){
-				for(let i = 0 ; i < SE_set.length ; i ++){
-					SE_array.push(new soundMake(
-						SE_set[i][sound_idTag],
-						SE_set[i][sound_isLoop],
-						SE_set[i][sound_volume],
-						SE_set[i][sound_mute],
-						SE_set[i][sound_loopTiming],
-						SE_set[i][sound_loopBackTime]
-						)
-					)
-					if(SE_array[i].sound.loop){
-						SE_array[i].playFromStart();
-					}
-					console.log(i + SE_array[i].idTag + " loaded");
-				}
-				if(browser == browser_Firefox){	// 無音対策
-					SE_firefox = document.getElementById("SE_firefox");
-					SE_firefox.loop = true;
-					SE_firefox.volume = 0.0000001;
-					SE_firefox.play();
-				}
-				audioswitch = true;
-			}	
-		}
-	)
-	
-	//操作受付---------->
-	
 	//計算部----------<
 	if (clickup == true) {
 		if(gameState == gState_title){
-
+			gameState = gState_intermission;
 		}else if(gameState == gState_intermission){
 
 		}else if(gameState == gState_battle){
-	
-			if (circleColCircle(mouseP, 1, archerCircle.p, archerCircle.r)) {
-				arrowRemain = arrowUsage;
-			}else {
-				if (arrowRemain > 0) {
-					arrowArray[useArrowIndex++].shoot(mouseP, archerCircle.p, charge);
-					useArrowIndex %= arrowObject;
-					--arrowRemain;
+			if(battleStart){
+				if (circleColCircle(mouseP, 1, archerCircle.p, archerCircle.r)) {
+					arrowRemain = arrowUsage;
+				}else {
+					if (arrowRemain > 0) {
+						arrowArray[useArrowIndex++].shoot(mouseP, archerCircle.p, charge);
+						useArrowIndex %= arrowObject;
+						--arrowRemain;
+					}
 				}
 			}
-
 			charge = 0;
 			chargevalue = 0;
 			alpha = 0.3;
@@ -162,134 +71,128 @@ function update(){
 		uiDisp.messageClickedSwitch(false);
 		clickup = false;
 	}
+	soundStopRegardlessInput();
 
 	if(gameState == gState_title){
-
 	}else if(gameState == gState_intermission){
 		SE_set[pickSE(SE_arrowShoot)][sound_soundOn] = false;
 		SE_set[pickSE(SE_reload)][sound_soundOn] = false;
-		if(SE_array[pickSE(SE_arrowShoot)]){
-			SE_array[pickSE(SE_arrowShoot)].muteChange(true);
-			SE_array[pickSE(SE_arrowFly)].muteChange(true);
-		}
-		if(SE_array[pickSE(SE_arrowHit)]){
-			SE_array[pickSE(SE_arrowHit)].muteChange(true);
-		}
-		if(SE_array[pickSE(SE_defeatEnemy)]){
-			SE_array[pickSE(SE_defeatEnemy)].muteChange(true);
-		}
-		if(SE_array[pickSE(SE_damageElf)]){
-			SE_array[pickSE(SE_damageElf)].muteChange(true);
-		}
-		if(SE_array[pickSE(SE_damageForest)]){
-			SE_array[pickSE(SE_damageForest)].muteChange(true);
-		}
 
 	}else if(gameState == gState_battle){
-		
-		SE_set[pickSE(SE_arrowShoot)][sound_soundOn] = true;
-		SE_set[pickSE(SE_reload)][sound_soundOn] = true;
-		if(SE_array[pickSE(SE_arrowShoot)]){
-			SE_array[pickSE(SE_arrowShoot)].muteChange(false);
-			SE_array[pickSE(SE_arrowFly)].muteChange(false);
+		if(gameover == true){
+			uiDisp.elfForestShakeReset();
+			elfHp = elfMaxHp;
+			forestHp = forestMaxHp;
+			elapsedTime = 0;
+			battleAfterTime = 0;
+			arrowRemain = arrowUsage;	// 射れる矢の数
+			waveTime = 0;
+			useArrowIndex = 0;
+			arrowArray.splice(0);
+			enemyNum = 0;
+			for(let i = 0 ; i < arrowObject ; i++){
+				arrowArray.push(new arrow());
+			}
+			enemySet(stageNum);
+			gameover = false;
 		}
-
-		soundRegardlessInput();
-		if(battle_WinOrLost == 0){
-			if(gameover == true){
-				uiDisp.elfForestShakeReset();
-				elfHp = 5;
-				forestHp = 15;
-				elapsedTime = 0;
-				battle_WinOrLost = 0;
-				battleAfterTime = 0;
-				arrowRemain = arrowUsage;	// 射れる矢の数
-				waveTime = 0;
-				useArrowIndex = 0;
-				arrowArray.splice(0);
-				enemyNum = 0;
-				for(let i = 0 ; i < arrowObject ; i++){
-					arrowArray.push(new arrow());
+		if(battleBeforeTime++>fps * 1.25){
+			battleStart =true;
+		};
+		if(battleStart){
+			SE_set[pickSE(SE_arrowShoot)][sound_soundOn] = true;
+			SE_set[pickSE(SE_reload)][sound_soundOn] = true;
+			if(battleWinOrLost == 0){
+				if (clicknow == true) {
+					++chargevalue;
+					charge = chargevalue * chargevalue * 0.1;
+					if (charge >= 300) {
+						charge = 300;
+					}
+					//照準の不透明度、大きさの変化<
+					alpha = charge / 400;
+					aimCircle = charge / 10;
+					//照準の不透明度、大きさの変化>
 				}
-				enemySet(stageNum);
-				gameover = false;
-			}
-			if (clicknow == true) {
-				++chargevalue;
-				charge = chargevalue * chargevalue * 0.1;
-				if (charge >= 300) {
-					charge = 300;
+			
+				for (let i = 0; i < arrowArray.length; i++) {
+					arrowArray[i].move();
 				}
-				//照準の不透明度、大きさの変化<
-				alpha = charge / 400;
-				aimCircle = charge / 10;
-				//照準の不透明度、大きさの変化>
-			}
-		
-			for (let i = 0; i < arrowArray.length; i++) {
-				arrowArray[i].move();
-			}
-		
-			for (let i = 0; i < arrowArray.length; i++) {
-				for (let j = 0; j < enemyArray.length; j++) {
-					if (enemyArray[j].appearOrNot()) {
-						if (circleColLine(enemyArray[j].circle, arrowArray[i].trajectoryLine)) {
-							if (enemyArray[j].aliveOrDeath() == false) {
-								if (arrowArray[i].shotornot == true) {
-									if (arrowArray[i].hitornot == false) {
-										enemyArray[j].hitArrow();
-										arrowArray[i].hitObject(enemyArray[j].circle, j);
+			
+				for (let i = 0; i < arrowArray.length; i++) {
+					for (let j = 0; j < enemyArray.length; j++) {
+						if (enemyArray[j].appearOrNot()) {
+							if (circleColLine(enemyArray[j].circle, arrowArray[i].trajectoryLine)) {
+								if (enemyArray[j].aliveOrDeath() == false) {
+									if (arrowArray[i].shotornot == true) {
+										if (arrowArray[i].hitornot == false) {
+											enemyArray[j].hitArrow();
+											arrowArray[i].hitObject(enemyArray[j].circle, j);
+										}
 									}
 								}
 							}
 						}
 					}
-				}
-				if (arrowArray[i].trajectoryLine.end_p.y > canvasH * 2) {
-					if (arrowArray[i].hitEnemy == false) {
-						arrowArray[i].vanish();
+					if (arrowArray[i].trajectoryLine.end_p.y > canvasH * 2) {
+						if (arrowArray[i].hitEnemy == false) {
+							arrowArray[i].vanish();
+						}
+					}
+					if (arrowArray[i].hitEnemy == true) {
+						if (enemyArray[arrowArray[i].whoHit].aliveOrDeath()) {
+							arrowArray[i].vanish();
+						}
 					}
 				}
-				if (arrowArray[i].hitEnemy == true) {
-					if (enemyArray[arrowArray[i].whoHit].aliveOrDeath()) {
-						arrowArray[i].vanish();
+			
+				for (let i = 0; i < enemyArray.length; i++) {
+					enemyArray[i].move(archerCircle);
+					if (enemyArray[i].aliveOrDeath() == false) {
+						enemyArray[i].attack();
 					}
 				}
-			}
-		
-			for (let i = 0; i < enemyArray.length; i++) {
-				enemyArray[i].move(archerCircle);
-				if (enemyArray[i].aliveOrDeath() == false) {
-					enemyArray[i].attack();
+				if (elfHp <= 0) {
+					battleWinOrLost = battle_elfLost;
 				}
+				else if (forestHp <= 0) {
+					battleWinOrLost = battle_forestLost;
+				}
+				else if (enemyNum <= 0) {
+					battleWinOrLost = battle_win;
+				}		
+				if(battleWinOrLost != 0){
+					soundStartRegardlessInput(SE_battleEnd);
+				}
+				++waveTime;	
+				++elapsedTime; // 経過時間変数を増加
 			}
-			++waveTime;	
 		}
-		++elapsedTime; // 経過時間変数を増加
-		if(battle_WinOrLost != 0){
+		if(battleWinOrLost != 0){
 			stageNum = elapsedTime % 2;
 			InputOk = false;
-			if(++battleAfterTime == fps * 3){
+			if(battleAfterTime++ == battleAfterUntilEnd){
+				uiDisp.finishTimerReset();
+				battleBeforeTime = 0;
+				battleStart = false;
 				InputOk = true;
 				gameover = true;
-				battle_WinOrLost = 0;
+				battleWinOrLost = 0;
 				gameState = gState_intermission
 			}
 		}
 	}
-	document.getElementById("timetag").textContent = (`${elapsedTime}  ${(Math.floor(elapsedTime / fps))} `);
+	//document.getElementById("timetag").textContent = (`${elapsedTime}  ${(Math.floor(elapsedTime / fps))} `);
 }
 
 let testswitch = false;
 let phazeChange = false;
+
 // ゲーム画面描画関数
 function displayDraw(){
-	let field = document.getElementById("field");
-	field.width = canvasW;
-	field.height = canvasH;
 	let ctx = field.getContext("2d");
-	ctx.imageSmoothingEnabled = false;	//アンチエイリアスをオフ
 	ctx.clearRect(0, 0, canvasW, canvasH);	//描画領域クリア
+	ctx.imageSmoothingEnabled = false;	//アンチエイリアスをオフ
 	drawMap(stage01, ctx, "backgroundimg");
 
 	if(gameState == gState_title){
@@ -325,8 +228,10 @@ function displayDraw(){
 				break;
 		}
 	}else if(gameState == gState_battle){
-		if(gameover == true){
-
+		if(!battleStart){
+			uiDisp.readyDisp(ctx);
+		}else{
+			uiDisp.startDisp(ctx);
 		}
 	
 		// あとで消す<
@@ -346,10 +251,11 @@ function displayDraw(){
 			96
 		);
 		// あとで消す>
-	
-		for (i = 0; i < arrowArray.length; i++) {
-			if (arrowArray[i].shotornot == true) {
-				arrowArray[i].display(ctx);
+		if(gameover != true){
+			for (i = 0; i < arrowArray.length; i++) {
+				if (arrowArray[i].shotornot == true) {
+					arrowArray[i].display(ctx);
+				}
 			}
 		}
 		for (i = 0; i < enemyArray.length; i++) {
@@ -361,19 +267,14 @@ function displayDraw(){
 		ctx.strokeRect(0, 0, canvasW, 472);
 	
 		uiDisp.statusDisplay(ctx);
+		if(battleWinOrLost != 0){
+			uiDisp.finishDisp(ctx,battleWinOrLost);
+		}
+
 		//描画領域---------------------------------------------------------->
 	
-		document.getElementById("mousepointtag").textContent = (`${mouseP.x}  ${mouseP.y}  ${testU}  ${testV}  ${(Math.floor((testangle / Math.PI * 180) * 10)) / 100}`);
-		document.getElementById("arrowtag").textContent = (`${arrowRemain} / ${arrowUsage}  ${useArrowIndex}`);
-		if (elfHp <= 0) {
-			battle_WinOrLost = battle_elfLost;
-		}
-		else if (forestHp <= 0) {
-			battle_WinOrLost = battle_forestLost;
-		}
-		else if (enemyNum <= 0) {
-			battle_WinOrLost = battle_win;
-		}
+		//document.getElementById("mousepointtag").textContent = (`${mouseP.x}  ${mouseP.y}  ${testU}  ${testV}  ${(Math.floor((testangle / Math.PI * 180) * 10)) / 100}`);
+		//document.getElementById("arrowtag").textContent = (`${arrowRemain} / ${arrowUsage}  ${useArrowIndex}`);
 	}
 
 	//照準表示描画<
