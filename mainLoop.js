@@ -15,6 +15,7 @@ let wave = 0;			// 現在の敵の出現ウェーブ
 let testangle=0;
 let testU;
 let testV;
+let gameClicked = 0;
 let gameover = false;
 let battleWinOrLost = 0;
 let battleBeforeTime = 0;
@@ -42,21 +43,28 @@ let chargevalue = 0;
 
 let arrowArray = new Array();
 let enemyArray = new Array();
+const battleBeforeUntilEnd = 1.25 * fps;
 const battleAfterUntilEnd = 5 * fps;
 // ゲーム操作受付、計算処理部分
 function update(){
 	//計算部----------<
 	if (clickup == true) {
 		if(gameState == gState_title){
-			gameState = gState_intermission;
+		if(gameClicked <= 0){
+			gameClicked++;
+			sound_set[pickSE(SE_gameStart)][sound_soundOn] = true;
+		}
 		}else if(gameState == gState_intermission){
 
 		}else if(gameState == gState_battle){
 			if(battleStart){
 				if (circleColCircle(mouseP, 1, archerCircle.p, archerCircle.r)) {
+					soundStartRegardlessInput(SE_reload);
 					arrowRemain = arrowUsage;
 				}else {
+					soundStartRegardlessInput(SE_arrowShoot);
 					if (arrowRemain > 0) {
+						soundStartRegardlessInput(SE_arrowFly);
 						arrowArray[useArrowIndex++].shoot(mouseP, archerCircle.p, charge);
 						useArrowIndex %= arrowObject;
 						--arrowRemain;
@@ -68,15 +76,28 @@ function update(){
 			alpha = 0.3;
 			aimCircle = 30;
 		}
-		uiDisp.messageClickedSwitch(false);
+
+		uiDisp.clickupCheck();
 		clickup = false;
 	}
-	soundStopRegardlessInput();
 
 	if(gameState == gState_title){
+		if (clicknow) {
+			if(gameClicked > 0){
+				sound_array[pickSE(SE_gameStart)].sound.volume = SEVolume1;
+				gameClicked++;
+			}
+		}
+		if(gameClicked >= 2){
+			elapsedTime++;
+		}
+		if(elapsedTime > fps * 1.5){
+			elapsedTime = 0;
+			gameClicked = 0;
+			soundStartRegardlessInput(BGM_storyBeginning);
+			gameState = gState_intermission;
+		}
 	}else if(gameState == gState_intermission){
-		SE_set[pickSE(SE_arrowShoot)][sound_soundOn] = false;
-		SE_set[pickSE(SE_reload)][sound_soundOn] = false;
 
 	}else if(gameState == gState_battle){
 		if(gameover == true){
@@ -96,12 +117,14 @@ function update(){
 			enemySet(stageNum);
 			gameover = false;
 		}
-		if(battleBeforeTime++>fps * 1.25){
+		if(battleBeforeTime++>battleBeforeUntilEnd){
 			battleStart =true;
 		};
+		if(!battleStart){
+			stopNowplayingBGM();
+			soundStartRegardlessInput(BGM_battle);
+		}
 		if(battleStart){
-			SE_set[pickSE(SE_arrowShoot)][sound_soundOn] = true;
-			SE_set[pickSE(SE_reload)][sound_soundOn] = true;
 			if(battleWinOrLost == 0){
 				if (clicknow == true) {
 					++chargevalue;
@@ -162,6 +185,7 @@ function update(){
 					battleWinOrLost = battle_win;
 				}		
 				if(battleWinOrLost != 0){
+					stopNowplayingBGM();
 					soundStartRegardlessInput(SE_battleEnd);
 				}
 				++waveTime;	
@@ -178,10 +202,12 @@ function update(){
 				InputOk = true;
 				gameover = true;
 				battleWinOrLost = 0;
+				soundStartRegardlessInput(BGM_storyBeginning);
 				gameState = gState_intermission
 			}
 		}
 	}
+	soundControlRegardlessInput();
 	//document.getElementById("timetag").textContent = (`${elapsedTime}  ${(Math.floor(elapsedTime / fps))} `);
 }
 
@@ -200,7 +226,7 @@ function displayDraw(){
 	}else if(gameState == gState_intermission){
 		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, testmessage);
 		switch(uiDisp.messageLinePick){
-			case 0:
+			case 1:
 				if(phazeChange == true){
 					gameState = gState_battle;
 					phazeChange = false;
@@ -215,11 +241,11 @@ function displayDraw(){
 				shalala.animationDisplay(ctx);
 				louya.animationDisplay(ctx);
 				break;
-			case 1:
 			case 2:
 			case 3:
 			case 4:
 			case 5:
+			case 6:
 				louya.point.x = 500;
 				louya.setTileV(1);
 				shalala.animationDisplay(ctx);

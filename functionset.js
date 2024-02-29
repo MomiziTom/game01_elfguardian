@@ -719,16 +719,18 @@ let uiDisp = {
 	// メッセージウィンドウ表示
 	widowAlpha: 0.8,
 	innerTimer: 0,
-	cursorSwitchFreq: 6,
+	cursorSwitchFreq: 6,	// メッセージ送り待ち中に表示されるカーソルのアニメーションの切り替わるフレーム数
 	messageSpeed: messageSpeed_slow,
 	messageAllEnd: false,
 	textReceiver: "",
+	whoSpeak: "",
 	fontSize: 22,
 	lineHeight: 1.1,
 	messageFinish: false,
 	messageRowPick: 0,
 	messageLinePick: 0,
 	messageClicked: false,
+	clickupChecker: false,
 	messageDisplay: function (ctx, x, y, w, h, message) {
 		let img = document.getElementById("statusicon");
 
@@ -851,66 +853,83 @@ let uiDisp = {
 			);
 		}
 
+		if(this.clickupChecker){
+			this.messageClicked =false;
+			this.clickupChecker =false;
+		}		
 		// ウィンドウ内に表示するテキスト
 		// サウンドに関して　メッセージ送り音は文字が一文字表示されるごとに鳴らす必要があるのでインスタンスから鳴らすが
 		// 　　　　　　　　　決定音(pushEnter)はクリック側に制御があるので鳴らす許可のブール値を変えるだけでいい
 		if(this.messageLinePick < message.length){
-			if(!this.messageFinish){
-				if(this.messageClicked == false){
-					if(clicknow){
-						this.textReceiver = "";
-						for(let i = 0 ; i < message[this.messageLinePick].length ;i++){
-							this.textReceiver += (message[this.messageLinePick].charAt(i));
-						}
-						if(this.messageLinePick >= message.length - 1){
-							this.messageAllEnd = true;
-						}
-						soundStartRegardlessInput(SE_message)
-						SE_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
-						this.messageClicked = true;
-						this.messageFinish = true;
-					}
-				}
+			if(message[this.messageLinePick].charAt(0) == "\t"){
+				console.log("test1 t");
+				this.messageLinePick++;
+			}else{
 				if(!this.messageFinish){
-					SE_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
-					if(this.innerTimer % this.messageSpeed == 0 ){
-						if(this.messageRowPick != message[this.messageLinePick].length){
-							if(message[this.messageLinePick].charAt(this.messageRowPick) != "　"){
-								soundStartRegardlessInput(SE_message)
+					if(this.messageClicked == false){
+						if(clicknow){
+							this.textReceiver = "";
+							for(let i = 0 ; i < message[this.messageLinePick].length ;i++){
+								this.textReceiver += (message[this.messageLinePick].charAt(i));
 							}
-							if(message[this.messageLinePick].charAt(this.messageRowPick) == "\r"){
-								console.log("test1");
-							}
-							if(message[this.messageLinePick].charAt(this.messageRowPick) == "\f"){
-								console.log("test2");
-							}
-							this.textReceiver += (message[this.messageLinePick].charAt(this.messageRowPick));
-							this.messageRowPick++;
-						}else{
-						if(this.messageLinePick >= message.length - 1){
+							if(this.messageLinePick >= message.length - 1){
 								this.messageAllEnd = true;
 							}
-							SE_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
+							soundStartRegardlessInput(SE_message)
+							sound_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
+							this.messageClicked = true;
 							this.messageFinish = true;
 						}
 					}
-				}
-			}else{
-				if(this.messageClicked == false){
-					if(clicknow){
-						this.messageLinePick++;
-						this.messageRowPick = 0;
-						this.messageFinish = false;
-						this.textReceiver = "";
-						if(this.messageLinePick >= message.length){
-							this.messageAllEnd = false;
-							this.messageLinePick = 0;
+					if(!this.messageFinish){
+						sound_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
+						if(this.innerTimer % this.messageSpeed == 0 ){
+							if(this.messageRowPick != message[this.messageLinePick].length){
+								if(message[this.messageLinePick].charAt(this.messageRowPick) != "　"){
+									soundStartRegardlessInput(SE_message)
+								}
+								/*if(message[this.messageLinePick].charAt(this.messageRowPick) == "\t"){
+									console.log("test1 t");
+								}
+								if(message[this.messageLinePick].charAt(this.messageRowPick) == "\v"){
+									console.log("test2 v");
+								}
+								if(message[this.messageLinePick].charAt(this.messageRowPick) == "\r"){
+									console.log("test3 r");
+								}
+								if(message[this.messageLinePick].charAt(this.messageRowPick) == "\f"){
+									console.log("test4 f");
+								}*/
+								this.textReceiver += (message[this.messageLinePick].charAt(this.messageRowPick));
+								this.messageRowPick++;
+							}else{
+							if(this.messageLinePick >= message.length - 1){
+									this.messageAllEnd = true;
+								}
+								sound_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
+								this.messageFinish = true;
+							}
 						}
-						this.messageClicked = true;
+					}
+				}else{
+					if(this.messageClicked == false){
+						if(clicknow){
+							this.messageLinePick++;
+							this.messageRowPick = 0;
+							this.messageFinish = false;
+							this.textReceiver = "";
+							if(this.messageLinePick >= message.length){
+								this.messageAllEnd = false;
+								this.messageLinePick = 0;
+							}
+							this.messageClicked = true;
+						}
 					}
 				}
 			}
 		}
+
+		// テキストを画面に表示する処理
 		for(let lines = this.textReceiver.split("\n"), i = 0 , l = lines.length; i < l ; i++){
 			let line = lines[i];
 			let addY = this.fontSize;
@@ -927,14 +946,17 @@ let uiDisp = {
 		}
 		this.innerTimer++;
 	},
-	messageClickedSwitch: function(_bool){
-		this.messageClicked = _bool;
+	clickupCheck: function(){
+		this.clickupChecker = true;
 	},
 
 	// バトル開始の合図(ready...)を画面に表示
 	readyTimer: 0,
 	startTimer: 0,
 	readyDisp: function(ctx){
+		if(this.readyTimer == 0){
+			soundStartRegardlessInput(SE_ready);
+		}
 		this.startTimer = 0;
 		this.readyTimer++;
 		let img = document.getElementById("statusicon");
@@ -957,6 +979,9 @@ let uiDisp = {
 		ctx.globalAlpha = 1.0;
 	},
 	startDisp: function(ctx){
+		if(this.startTimer == 0){
+			soundStartRegardlessInput(SE_battleStart);
+		}
 		this.readyTimer = 0;
 		this.startTimer++;
 		let img = document.getElementById("statusicon");
@@ -1143,30 +1168,43 @@ class soundMake{
 
 function soundStartRegardlessInput(_idTag){
 	let SE = pickSE(_idTag);
-	if(SE_array[SE]){
-		SE_array[SE].currentChange(0);
-		SE_array[SE].muteChange(false);
-		SE_set[SE][sound_soundOn] = true;
-		SE_set[SE][sound_playTime] = SE_array[SE].sound.currentTime;
+	if(sound_array[SE]){
+		sound_array[SE].currentChange(0);
+		sound_array[SE].muteChange(false);
+		sound_set[SE][sound_soundOn] = true;
+		sound_set[SE][sound_playTime] = sound_array[SE].sound.currentTime;
+		if(sound_array[SE].idTag.slice(0, 1) == "B"){
+			nowPlayingBGM = sound_array[SE].idTag;
+		}
 	}
 
 }
-function soundStopRegardlessInput(){
-	for(let i = 0 ; i < SE_array.length ; i++){
-		if(SE_array[i].sound.loop){
-			if(SE_set[i][sound_soundOn]){
-				if( SE_array[i].sound.currentTime < SE_set[i][sound_playTime]){
-					if(SE_array[i]){
-						SE_array[i].muteChange(true);
-						SE_set[i][sound_soundOn] = false;
+function soundControlRegardlessInput(){
+	for(let i = 0 ; i < sound_array.length ; i++){
+		if(sound_array[i].sound.loop){
+			if(sound_set[i][sound_soundOn]){
+				if(sound_array[i]){
+					if(sound_array[i].idTag.slice(0, 1) == "S"){
+						if( sound_array[i].sound.currentTime < sound_set[i][sound_playTime]){
+							sound_array[i].muteChange(true);
+							sound_set[i][sound_soundOn] = false;
+						}
+						sound_set[i][sound_playTime] = sound_array[i].sound.currentTime;
+					}else if(sound_array[i].idTag.slice(0, 1) == "B"){
+						sound_array[i].loopBack();
 					}
 				}
-				SE_set[i][sound_playTime] = SE_array[i].sound.currentTime;
 			}	
 		}
 	}
 }
-
+function stopNowplayingBGM(){
+	if(nowPlayingBGM != ""){
+		sound_array[pickSE(nowPlayingBGM)].muteChange(true);
+		sound_set[pickSE(nowPlayingBGM)][sound_soundOn] = false;
+		nowPlayingBGM = "";
+		}
+}
 
 function enemySet(_stageNum){
 	enemyArray.splice(0);
@@ -1185,6 +1223,7 @@ function enemySet(_stageNum){
 
 // 初期化処理。addEventListener等マウス操作入力の開始など
 function Initialization(){
+	sound_set[pickSE(SE_gameStart)][sound_soundOn] = true;
 	document.getElementById("field").addEventListener(
 		"mousemove",
 		function (event) {
@@ -1198,10 +1237,10 @@ function Initialization(){
 		function () {
 			if(InputOk){
 				clicknow = true;
-				if(SE_array[pickSE(SE_pushEnter)]){
-					if(SE_set[pickSE(SE_pushEnter)][sound_soundOn]){
-						SE_array[pickSE(SE_pushEnter)].playFromStart();
-						SE_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
+				if(sound_array[pickSE(SE_pushEnter)]){
+					if(sound_set[pickSE(SE_pushEnter)][sound_soundOn]){
+						sound_array[pickSE(SE_pushEnter)].playFromStart();
+						sound_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
 					}
 				}
 			}
@@ -1213,24 +1252,6 @@ function Initialization(){
 			clicknow = false;
 			if(InputOk){
 				clickup = true;
-				if (circleColCircle(mouseP, 1, archerCircle.p, archerCircle.r)) {
-					if(SE_set[pickSE(SE_reload)][sound_soundOn]){
-						if(SE_array[pickSE(SE_reload)]){
-							SE_array[pickSE(SE_reload)].playFromStart();
-							SE_set[pickSE(SE_reload)][sound_soundOn] = false;
-						}
-					}
-				}else {
-					if(SE_set[pickSE(SE_arrowShoot)][sound_soundOn]){
-						if(SE_array[pickSE(SE_arrowShoot)]){
-							SE_array[pickSE(SE_arrowShoot)].playFromStart();
-							if(arrowRemain > 0){
-								SE_array[pickSE(SE_arrowFly)].playFromStart();
-							}
-							SE_set[pickSE(SE_arrowShoot)][sound_soundOn] = false;
-						}
-					}
-				}
 			}
 		}
 	);
@@ -1252,20 +1273,20 @@ function Initialization(){
 		"click",
 		function(){
 			if(audioswitch == false){
-				for(let i = 0 ; i < SE_set.length ; i ++){
-					SE_array.push(new soundMake(
-						SE_set[i][sound_idTag],
-						SE_set[i][sound_isLoop],
-						SE_set[i][sound_volume],
-						SE_set[i][sound_mute],
-						SE_set[i][sound_loopTiming],
-						SE_set[i][sound_loopBackTime]
+				for(let i = 0 ; i < sound_set.length ; i ++){
+					sound_array.push(new soundMake(
+						sound_set[i][sound_idTag],
+						sound_set[i][sound_isLoop],
+						sound_set[i][sound_volume],
+						sound_set[i][sound_mute],
+						sound_set[i][sound_loopTiming],
+						sound_set[i][sound_loopBackTime]
 						)
 					)
-					if(SE_array[i].sound.loop){
-						SE_array[i].playFromStart();
+					if(sound_array[i].sound.loop){
+						sound_array[i].playFromStart();
 					}
-					console.log(i + SE_array[i].idTag + " loaded");
+					console.log(i + sound_array[i].idTag + " loaded");
 				}
 				if(browser == browser_Firefox){	// 無音対策
 					SE_firefox = document.getElementById("SE_firefox");
@@ -1275,7 +1296,14 @@ function Initialization(){
 				}
 				console.log("sound loaded");
 				audioswitch = true;
-			}	
+			}
+			if(sound_set[pickSE(SE_gameStart)][sound_soundOn]){
+				if(sound_array[pickSE(SE_gameStart)]){
+					sound_array[pickSE(SE_gameStart)].playFromStart();
+					sound_set[pickSE(SE_gameStart)][sound_soundOn] = false;
+				}
+			}
+
 		}
 	)
 
