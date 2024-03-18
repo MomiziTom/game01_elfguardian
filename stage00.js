@@ -1,5 +1,7 @@
-let numberAnimePreset = new animePreset("numberimg", 4, 4, 16);
-let arrowAnimePreset = new animePreset("arrowimg", 9, 4, 8);
+const numberAnimePreset = new animePreset("numberimg", 4, 4, 16);
+const arrowAnimePreset = new animePreset("arrowimg", 9, 4, 8);
+const shalalaAnimePreset = new animePreset("shalalaimg", 4, 5, 16);
+const louyaAnimePreset = new animePreset("louyaimg", 4, 5, 4);
 
 let nowPlayingBGM = "";
 let SEVolume1 = 0.05;	// 通常音量
@@ -20,23 +22,23 @@ const sound_loopBackTime = 5;
 const sound_soundOn = 6;
 const sound_playTime = 7;
 
-let BGM_storyBeginning = "BGM_storyBeginning";
-let BGM_battle = "BGM_battle";
-let SE_message = "SE_message";
-let SE_pushEnter = "SE_pushEnter";
-let SE_arrowShoot = "SE_arrowShoot";
-let SE_arrowFly = "SE_arrowFly";
-let SE_reload = "SE_reload";
-let SE_arrowHit = "SE_arrowHit";
-let SE_defeatEnemy = "SE_defeatEnemy";
-let SE_damageElf = "SE_damageElf";
-let SE_damageForest = "SE_damageForest";
-let SE_battleEnd ="SE_battleEnd";
-let SE_win ="SE_win";
-let SE_lose ="SE_lose";
-let SE_gameStart ="SE_gameStart";
-let SE_ready = "SE_ready";
-let SE_battleStart = "SE_battleStart";
+const BGM_storyBeginning = "BGM_storyBeginning";
+const BGM_battle = "BGM_battle";
+const SE_message = "SE_message";
+const SE_pushEnter = "SE_pushEnter";
+const SE_arrowShoot = "SE_arrowShoot";
+const SE_arrowFly = "SE_arrowFly";
+const SE_reload = "SE_reload";
+const SE_arrowHit = "SE_arrowHit";
+const SE_defeatEnemy = "SE_defeatEnemy";
+const SE_damageElf = "SE_damageElf";
+const SE_damageForest = "SE_damageForest";
+const SE_battleEnd ="SE_battleEnd";
+const SE_win ="SE_win";
+const SE_lose ="SE_lose";
+const SE_gameStart ="SE_gameStart";
+const SE_ready = "SE_ready";
+const SE_battleStart = "SE_battleStart";
 
 let sound_set =[	// _idTag, _isLoop, _volume, _mute, _loopTiming, _loopBackTime, SoundOnSwitch(※これがtrueのとき音声を再生できる), playTime(※currentTimeではない。ループ管理に使用)
 	["BGM_storyBeginning",true,SEVolume1,true,85.358,85.358,false,0],
@@ -70,12 +72,12 @@ let sound_array = [];
 
 let audioswitch = false;
 
-let goblin = new enemyTypePreset(
+const goblin = new enemyTypePreset(
 	30,
 	2,
 	enemyMove_str,
 	numberAnimePreset,
-	2,
+	2,	//2
 	80,
 	10,
 	0,
@@ -83,12 +85,12 @@ let goblin = new enemyTypePreset(
 	aim_off
 );
 
-let goblinJump = new enemyTypePreset(
+const goblinJump = new enemyTypePreset(
 	30,
 	2,
 	enemyMove_jump,
 	numberAnimePreset,
-	1.5,
+	1.5,	//1.5
 	80,
 	5,
 	0,
@@ -96,14 +98,14 @@ let goblinJump = new enemyTypePreset(
 	aim_off
 );
 
-let goblinAim = new enemyTypePreset(
+const goblinAim = new enemyTypePreset(
 	30,
 	2,
-	enemyMove_str,
+	enemyMove_strQuadra,
 	numberAnimePreset,
-	1.5,
-	80,
-	5,
+	0.5,
+	0.05,
+	10,
 	0,
 	true,
 	aim_homing
@@ -158,27 +160,148 @@ let stage01 = [
 let shalala;
 let louya;
 window.addEventListener("load", function(){
-	shalala = new animation(arrowAnimePreset, 200 , 350);
-	louya = new animation(numberAnimePreset, canvasW + 100 , 350);
+	shalala = new animation(shalalaAnimePreset, 200 , 350);
+	louya = new animation(louyaAnimePreset, canvasW + 100 , 350);
+	louya.setTileV(3);
+	louya.setUseVRange(2);
 });
 
-
-let testmessage = [
-	"\t",
-	"お姉ちゃーーん！！！！\r\f\t\v",
-	"大変大変！！　　　　　　　　　　　　　　　　　　　　　　　　　\r\f\t\n遠くから悪いゴブリンの群れがいっぱいやってきたよ！！\r\f\t",
-	"多分ゴブリンたちはお姉ちゃんが手に持っている　　　　　　　　　　\n「エルフギア」を狙ってやってきたんだよ！！",
-	"エルフギアは矢をいくらでも放つことができる\nエルフの秘伝の武器だよ！　　　　　　　　　　　　　　　　　　　　　\n矢筒に入った矢が空になっても\n「リロード」をすれば矢が無限に補充されるんだ！！　　　　　　　　　　　　　　\nすごいよね・・・！！",
-	"それ以外にもこの森にはエルフの宝がたくさんあるんだ！！　　　　　　　　　　　　　　\nゴブリンたちに侵攻されたら・・・　　　　　　　　　　　　　　　\nこの森と私たちエルフはめちゃくちゃにされちゃうよ！！",
-	"お願いお姉ちゃん！！　　　　　　　　　　　　　　　　　　　\nその「エルフギア」を使ってゴブリンたちを退治して\nこの森を守って！！！"
+const scene1 = [
+	(ctx) => {
+		shalala.setTileV(0);
+		shalala.setXY(200, 350);
+		if(sceneStartSwitch == false){
+			louya.setX(canvasW + 100);
+			sceneStartSwitch = true;
+		}
+		shalala.animationDisplay(ctx);
+		louya.animationDisplay(ctx);
+		uiDisp.setSpeaker("シャララの妹ルーヤ");
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, false, true,
+		"お姉ちゃーーん！！！！");
+		louya.point.x > 500 ? [
+			louya.point.x -=4,
+			louya.setTileV(3),
+			louya.setFrequency(4)
+		] : [
+			louya.setTileV(0),
+			louya.setFrequency(16),
+			louya.setUseVRange(1)
+		];
+	},
+	(ctx) => {
+		shalala.animationDisplay(ctx);
+		louya.animationDisplay(ctx);
+		uiDisp.setSpeaker("ルーヤ");
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, false, true,
+		"大変大変！！　　　　　　　　　　　　　　　　　　　　　　　　　\n遠くから悪いゴブリンの群れがいっぱいやってきたよ！！");
+		louya.point.x = 500 + Math.random() * 16-8;
+		louya.setTileV(0);
+		louya.setFrequency(16)
+		louya.setUseVRange(1)
+},
+	(ctx) => {
+		louya.point.x = 500 + Math.random() * 16-8;
+		louya.point.y = 350 + Math.random() * 16-8;
+		shalala.animationDisplay(ctx);
+		louya.animationDisplay(ctx);
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, false, true,
+		"多分ゴブリンたちはお姉ちゃんが手に持っている　　　　　　　　　　\n「エルフギア」を狙ってやってきたんだよ！！");
+	},
+	(ctx) => {
+		louya.point.x = 500;
+		louya.point.y = 350;
+		shalala.animationDisplay(ctx);
+		louya.animationDisplay(ctx);
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, false, true,
+		"エルフギアは矢をいくらでも放つことができる\nエルフの秘伝の武器だよ！　　　　　　　　　　　　　　　　　　　　　\n矢筒に入った矢が空になっても\n「リロード」をすれば矢が無限に補充されるんだ！！　　　　　　　　　　　　　　\nすごいよね・・・！！");
+	},
+	(ctx) => {
+		shalala.animationDisplay(ctx);
+		louya.animationDisplay(ctx);
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, false, true,
+		"それ以外にもこの森にはエルフの宝がたくさんあるんだ！！　　　　　　　　　　　　　　\nゴブリンたちに侵攻されたら・・・　　　　　　　　　　　　　　　\nこの森と私たちエルフはめちゃくちゃにされちゃうよ！！");
+	},
+	(ctx) => {
+		shalala.animationDisplay(ctx);
+		louya.animationDisplay(ctx);
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, false, true,
+		"私も魔法で森に結界を張るけど　　　　　　　　　\nお姉ちゃんの身体ほど丈夫な結界じゃないから\nすぐに壊されちゃうよ！！");
+	},
+	(ctx) => {
+		shalala.animationDisplay(ctx);
+		louya.animationDisplay(ctx);
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, true, true,
+		"お願いお姉ちゃん！！　　　　　　　　　　　　　　　　　　　\nその「エルフギア」を使ってゴブリンたちを退治して\nこの森を守って！！！");
+	},
+	() => {
+		uiDisp.setSpeaker("");
+		uiDisp.messageClear();
+		eventTimeLine = 0;
+		gameState = gState_battle;
+		sceneStartSwitch = false;
+	},
 ];
 
-/*let testmessage = [
-	"これはテストメッセージです",
-	"そしてこれはなんと！\n二行にわたるテストメッセージです！",
-	"そしてお次は！\n三行にわたるメッセージを表示します！\nすごいですね！",
-	"これにてテストはおわりです！"];
-*/
+const scene2 = [
+	(ctx) => {
+		shalala.setTileV(0);
+		shalala.setXY(200, 350);
+		if(sceneStartSwitch == false){
+			louya.point.x = canvasW + 100;
+			sceneStartSwitch = true;
+		}
+		shalala.animationDisplay(ctx);
+		louya.animationDisplay(ctx);
+		uiDisp.setSpeaker("シャララの妹ルーヤ");
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, false, true,
+		"お姉ちゃーーん！！！！");
+		louya.point.x > 500 ? [
+			louya.point.x -=4,
+			louya.setTileV(3),
+			louya.setFrequency(4)
+		] : [
+			louya.setTileV(0),
+			louya.setFrequency(16),
+			louya.setUseVRange(1)
+		];
+	},
+	(ctx) => {
+		louya.point.x = 500 + Math.random() * 16-8;
+		louya.setTileV(0);
+		louya.setFrequency(16)
+		louya.setUseVRange(1)
+		shalala.animationDisplay(ctx);
+		louya.animationDisplay(ctx);
+		uiDisp.setSpeaker("ルーヤ");
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, false, true,
+		"や、やばいよぉぉーーー！！　　　　　　　　　　　　　　　　　　　　　　　　　\n殺意高めのハーピーたちがお姉ちゃんめがけて飛んできてるよ！！");
+	},
+	(ctx) => {
+		louya.point.x = 500 + Math.random() * 16-8;
+		louya.point.y = 350 + Math.random() * 16-8;
+		shalala.animationDisplay(ctx);
+		louya.animationDisplay(ctx);
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, false, true,
+		"ハーピーたちはゴブリンと違って真っすぐお姉ちゃんに向かってくるよ！！　　　　　　　　　　\n森を狙われないけど撃ち落さないとお姉ちゃんはひとたまりもないよ！！");
+	},
+	(ctx) => {
+		louya.point.x = 500;
+		louya.point.y = 350;
+		louya.animationDisplay(ctx);
+		shalala.animationDisplay(ctx);
+		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, true, true,
+		"お姉ちゃん気を付けて！！　　　　　　　　　　　　　　　　　　　\nハーピーたちにやられないよう「エルフギア」で撃ち落として！！！");
+	},
+	() => {
+		uiDisp.setSpeaker("");
+		uiDisp.messageClear();
+		eventTimeLine = 0;
+		gameState = gState_battle;
+		sceneStartSwitch = false;
+	},
+
+]
 
 /* web上にアップロードした際に使う設定　テスト段階では不使用
 let mapData = [];

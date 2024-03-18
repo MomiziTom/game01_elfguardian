@@ -1,10 +1,12 @@
 const gState_title = 0;
 const gState_intermission = 1;
 const gState_battle = 2;
+const gState_afterBattle = 3;
 
 const battle_win = 1;
 const battle_elfLost = 2;
 const battle_forestLost = 3;
+const arrowShalalaOffset = 14;
 
 let gameState = gState_title;
 
@@ -12,7 +14,7 @@ let elapsedTime = 0;	// 経過時間変数
 let waveTime = 0;		// ウェーブ中での経過時間変数
 let wave = 0;			// 現在の敵の出現ウェーブ
 
-let testangle=0;
+//let testangle=0;
 let testU;
 let testV;
 let gameClicked = 0;
@@ -26,7 +28,7 @@ let mouseP = new Point(0,0);
 let archerCircle = new Circle(new Point(80,300), 30);
 let arrowUsage = 15;		// 一度のリロードで補充される矢の数
 let arrowRemain = arrowUsage;	// 射れる矢の数
-let arrowObject = 40;	// 画面上に表示できる矢の最大数。これ以上の数の矢を放つと一番最初に放たれた矢から順に再計算、再表示される
+const arrowObject = 40;	// 画面上に表示できる矢の最大数。これ以上の数の矢を放つと一番最初に放たれた矢から順に再計算、再表示される
 let useArrowIndex = 0;	// 次に発射されるarrowArrayのインデックス番号。0～arrowObjectの値をとる
 
 let elfMaxHp = 5;
@@ -35,11 +37,14 @@ let forestMaxHp = 2;
 let forestHp = forestMaxHp;
 let alpha = 0.3;
 let aimCircle = 30;
+let aimNow = false;
 let reticleOn = false;
-let clicknow = false;
-let clickup = false;
-let charge = 0;
+const chargeDefaultValue = 20;
+const chargeMaxValue = 300;
+let charge = chargeDefaultValue;
 let chargevalue = 0;
+let eventTimeLine = 0;
+let eventResumeOk = false;
 
 let arrowArray = new Array();
 let enemyArray = new Array();
@@ -47,47 +52,10 @@ const battleBeforeUntilEnd = 1.25 * fps;
 const battleAfterUntilEnd = 5 * fps;
 // ゲーム操作受付、計算処理部分
 function update(){
-	//計算部----------<
-	if (clickup == true) {
-		if(gameState == gState_title){
-		if(gameClicked <= 0){
-			gameClicked++;
-			sound_set[pickSE(SE_gameStart)][sound_soundOn] = true;
-		}
-		}else if(gameState == gState_intermission){
-
-		}else if(gameState == gState_battle){
-			if(battleStart){
-				if (circleColCircle(mouseP, 1, archerCircle.p, archerCircle.r)) {
-					soundStartRegardlessInput(SE_reload);
-					arrowRemain = arrowUsage;
-				}else {
-					soundStartRegardlessInput(SE_arrowShoot);
-					if (arrowRemain > 0) {
-						soundStartRegardlessInput(SE_arrowFly);
-						arrowArray[useArrowIndex++].shoot(mouseP, archerCircle.p, charge);
-						useArrowIndex %= arrowObject;
-						--arrowRemain;
-					}
-				}
-			}
-			charge = 0;
-			chargevalue = 0;
-			alpha = 0.3;
-			aimCircle = 30;
-		}
-
-		uiDisp.clickupCheck();
-		clickup = false;
-	}
+	clickOnBehavior();
+	clickUpBehavior();
 
 	if(gameState == gState_title){
-		if (clicknow) {
-			if(gameClicked > 0){
-				sound_array[pickSE(SE_gameStart)].sound.volume = SEVolume1;
-				gameClicked++;
-			}
-		}
 		if(gameClicked >= 2){
 			elapsedTime++;
 		}
@@ -95,11 +63,27 @@ function update(){
 			elapsedTime = 0;
 			gameClicked = 0;
 			soundStartRegardlessInput(BGM_storyBeginning);
+			eventTimeLine = 0;
 			gameState = gState_intermission;
 		}
 	}else if(gameState == gState_intermission){
 
 	}else if(gameState == gState_battle){
+		const shalalaDisplayPoint = new Point(archerCircle.p.x, archerCircle.p.y + arrowShalalaOffset);
+		shalala.setDispPoint(shalalaDisplayPoint);
+		shalala.setTileV(0);
+		if(aimNow){
+			const angleArcherMouse = Math.atan2((archerCircle.p.y - mouseP.y), (mouseP.x - archerCircle.p.x));
+			if(Math.floor(angleArcherMouse * 180 / Math.PI) > -135 && Math.floor(angleArcherMouse * 180 / Math.PI) <= -45){
+				shalala.setTileV(2);
+			}else if(Math.floor(angleArcherMouse * 180 / Math.PI) > -45 && Math.floor(angleArcherMouse * 180 / Math.PI) <= 45){
+				shalala.setTileV(1);
+			}else if(Math.floor(angleArcherMouse * 180 / Math.PI) > 45 && Math.floor(angleArcherMouse * 180 / Math.PI) <= 135){
+				shalala.setTileV(3);
+			}else if(Math.floor(angleArcherMouse * 180 / Math.PI) > 135 || Math.floor(angleArcherMouse * 180 / Math.PI) <= -135){
+				shalala.setTileV(4);
+			};	
+		}
 		if(gameover == true){
 			uiDisp.elfForestShakeReset();
 			elfHp = elfMaxHp;
@@ -126,18 +110,6 @@ function update(){
 		}
 		if(battleStart){
 			if(battleWinOrLost == 0){
-				if (clicknow == true) {
-					++chargevalue;
-					charge = chargevalue * chargevalue * 0.1;
-					if (charge >= 300) {
-						charge = 300;
-					}
-					//照準の不透明度、大きさの変化<
-					alpha = charge / 400;
-					aimCircle = charge / 10;
-					//照準の不透明度、大きさの変化>
-				}
-			
 				for (let i = 0; i < arrowArray.length; i++) {
 					arrowArray[i].move();
 				}
@@ -193,7 +165,8 @@ function update(){
 			}
 		}
 		if(battleWinOrLost != 0){
-			stageNum = elapsedTime % 2;
+			stageNum++;
+			stageNum %= 2;
 			InputOk = false;
 			if(battleAfterTime++ == battleAfterUntilEnd){
 				uiDisp.finishTimerReset();
@@ -201,57 +174,46 @@ function update(){
 				battleStart = false;
 				InputOk = true;
 				gameover = true;
-				battleWinOrLost = 0;
 				soundStartRegardlessInput(BGM_storyBeginning);
-				gameState = gState_intermission
+				gameState = gState_afterBattle
 			}
 		}
+	}else if(gameState == gState_afterBattle){
+		if (battleWinOrLost == battle_elfLost) {
+
+		}
+		else if (battleWinOrLost == battle_forestLost) {
+
+		}
+		else if (battleWinOrLost == battle_win) {
+
+		}		
+		battleWinOrLost = 0;
+		gameState = gState_intermission;
+
 	}
+	uiDisp.messageController();
 	soundControlRegardlessInput();
 	//document.getElementById("timetag").textContent = (`${elapsedTime}  ${(Math.floor(elapsedTime / fps))} `);
 }
 
-let testswitch = false;
-let phazeChange = false;
+let sceneStartSwitch = false;
 
 // ゲーム画面描画関数
 function displayDraw(){
 	let ctx = field.getContext("2d");
-	ctx.clearRect(0, 0, canvasW, canvasH);	//描画領域クリア
 	ctx.imageSmoothingEnabled = false;	//アンチエイリアスをオフ
+	ctx.clearRect(0, 0, canvasW, canvasH);	//描画領域クリア
 	drawMap(stage01, ctx, "backgroundimg");
 
 	if(gameState == gState_title){
 
 	}else if(gameState == gState_intermission){
-		uiDisp.messageDisplay(ctx, 0, 440, canvasW, 162, testmessage);
-		switch(uiDisp.messageLinePick){
-			case 1:
-				if(phazeChange == true){
-					gameState = gState_battle;
-					phazeChange = false;
-					testswitch = false;
-					break;
-				}
-				if(testswitch == false){
-					louya.point.x = canvasW + 100;
-					testswitch = true;
-				}
-				louya.point.x > 500 ? louya.point.x -=4 : louya.setTileV(1);
-				shalala.animationDisplay(ctx);
-				louya.animationDisplay(ctx);
-				break;
-			case 2:
-			case 3:
-			case 4:
-			case 5:
-			case 6:
-				louya.point.x = 500;
-				louya.setTileV(1);
-				shalala.animationDisplay(ctx);
-				louya.animationDisplay(ctx);
-				phazeChange = true;
-				break;
+		if(stageNum == 0){
+			scene1[eventTimeLine](ctx);
+		}
+		if(stageNum == 1){
+			scene2[eventTimeLine](ctx);
 		}
 	}else if(gameState == gState_battle){
 		if(!battleStart){
@@ -260,9 +222,11 @@ function displayDraw(){
 			uiDisp.startDisp(ctx);
 		}
 	
-		// あとで消す<
+		shalala.animationDisplay(ctx);
+		/*
 		testangle = Math.atan2((mouseP.y - archerCircle.p.y), (mouseP.x - archerCircle.p.x));
 		testangle = angleCorrect(testangle);
+		console.log(testangle);
 		testU = Math.floor((testangle * 180 / Math.PI + 185) / 10 % 9);
 		testV = Math.floor((testangle * 180 / Math.PI + 185) / 90);
 		ctx.drawImage(
@@ -276,7 +240,7 @@ function displayDraw(){
 			96,
 			96
 		);
-		// あとで消す>
+		*/
 		if(gameover != true){
 			for (i = 0; i < arrowArray.length; i++) {
 				if (arrowArray[i].shotornot == true) {
@@ -289,9 +253,12 @@ function displayDraw(){
 		}
 	
 		// 戦闘画面領域表示
-		ctx.lineWidth = 2;  //照準表示の大きさ
+		ctx.lineWidth = 2; 
+		ctx.beginPath();
 		ctx.strokeRect(0, 0, canvasW, 472);
-	
+		if(aimNow){
+			uiDisp.drawTrajectory(mouseP, archerCircle.p, charge+1, ctx);
+		}
 		uiDisp.statusDisplay(ctx);
 		if(battleWinOrLost != 0){
 			uiDisp.finishDisp(ctx,battleWinOrLost);
@@ -301,8 +268,17 @@ function displayDraw(){
 	
 		//document.getElementById("mousepointtag").textContent = (`${mouseP.x}  ${mouseP.y}  ${testU}  ${testV}  ${(Math.floor((testangle / Math.PI * 180) * 10)) / 100}`);
 		//document.getElementById("arrowtag").textContent = (`${arrowRemain} / ${arrowUsage}  ${useArrowIndex}`);
-	}
+	}else if(gameState == gState_afterBattle){
+		if (battleWinOrLost == battle_elfLost) {
+			
+		}
+		else if (battleWinOrLost == battle_forestLost) {
 
+		}
+		else if (battleWinOrLost == battle_win) {
+
+		}		
+	}
 	//照準表示描画<
 	if(reticleOn == true){
 		ctx.strokeStyle = "#000000";
@@ -316,6 +292,4 @@ function displayDraw(){
 		ctx.globalAlpha = 1.0;
 	}
 	//照準表示描画>
-	
-	
 }

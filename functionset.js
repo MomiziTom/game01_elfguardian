@@ -5,8 +5,13 @@ const browser_Safari = 4;
 const browser_Firefox = 5;
 const browser_Opera = 6;
 
+const device_PC = 1;
+const device_smartPhone = 2;
+
+
 let browser;
-let userAgent = window.navigator.userAgent;
+let device;
+const userAgent = window.navigator.userAgent;
 let SE_firefox;		// ブラウザがfirefoxの際無音にならないようにするために使用
 console.log(userAgent);
 
@@ -26,6 +31,11 @@ if(userAgent.indexOf('MSIE') != -1 || userAgent.indexOf('Trident') != -1) {
 	browser = 0;
 }
 
+if(userAgent.indexOf('Windows') != -1 || userAgent.indexOf('Macintosh') != -1 ){
+	device = device_PC;
+}else{
+	device = device_smartPhone;
+}
 
 let canvasW = 800;
 let canvasH = 600;
@@ -63,6 +73,8 @@ const messageSpeed_normal = 3;
 const messageSpeed_slow = 4;
 const messageSpeed_verySlow = 5;
 
+let clicknow = false;
+let clickup = false;
 let stageNum = 0;
 let enemyNum = 0;		// 敵の数 これが0になるタイミングで次のフェーズに移行したりゲームクリアにしたりする
 
@@ -125,6 +137,12 @@ class Vec {
 	// Y軸方向に重力を加算
 	plusGravity() {
 		this.y += gravity;
+	}
+
+	dividedBy(n){
+		let x = this.x / n;
+		let y = this.y / n;
+		return new Vec(x,y);
 	}
 
 }
@@ -262,6 +280,8 @@ class animation {
 		this.alpha = 1.0;
 		this.nowU = 0;					// 現在表示中のU側インデックス
 		this.nowV = 0;					// 現在表示中のV側インデックス
+		this.useVRange = 1;				// アニメーションタイルのV方向の使用マス数
+		this.nowVRange = 0;
 		this.animateornot = true;		// タイルアニメーションさせるか否か
 		this.revDirectionU = false;		// 本来はU方向を右に進んでアニメーションさせるところを左方向に進ませてアニメーションさせるか否か
 		this.zoom = 2;					// 基本ドット絵は2倍で表示する 1にすると原寸で表示される
@@ -281,10 +301,10 @@ class animation {
 	// 変えたくない値にはnullを設定すること
 	setValue(_x, _y, _frequency, _untilUpdate, _nowU, _nowV, _alpha) {
 		if (_x != null) {
-			this.point.x = Object.assign(_x);
+			this.point.x = _x;
 		}
 		if (_y != null) {
-			this.point.y = Object.assign(_y);
+			this.point.y = _y;
 		}
 		if (_frequency != null) {
 			this.frequency = _frequency;
@@ -302,6 +322,24 @@ class animation {
 			this.alpha = _alpha;
 		}
 	}
+
+	setX(_x){
+		this.point.x = _x;
+	}
+
+	setY(_y){
+		this.point.y = _y;
+	}
+
+	setXY(_x, _y){
+		this.point.x = _x;
+		this.point.y = _y;
+	}
+
+	setFrequency(_frequency){
+		this.frequency = _frequency;
+	}
+
 	setTileU(_nowU) {
 		this.nowU = _nowU;
 	}
@@ -315,11 +353,15 @@ class animation {
 		this.nowV = _nowV;
 	}
 
+	setUseVRange(_num){
+		this.nowVRange = 0;
+		this.useVRange = _num;
+	}
 	setAlpha(_alpha) {
 		this.alpha = _alpha;
 	}
 	setDispPoint(_p) {
-		this.point = _p;
+		this.point = new Point(_p.x, _p.y);
 	}
 
 	// 変えたくない値にはnullを設定すること
@@ -338,7 +380,7 @@ class animation {
 		ctx.drawImage(
 			img,
 			this.nowU * this.tileSizeU,
-			this.nowV * this.tileSizeV,
+			(this.nowV + this.nowVRange) * this.tileSizeV,
 			this.tileSizeU,
 			this.tileSizeV,
 			this.point.x - (this.tileSizeU / 2) * this.zoom,
@@ -348,19 +390,23 @@ class animation {
 		);
 		ctx.globalAlpha = 1.0;
 		if (this.animateornot == true) {
+			++this.untilUpdate;
 			if (this.revDirectionU == false) {
-				++this.untilUpdate;
 				this.nowU += Math.floor(this.untilUpdate / this.frequency);
-				this.nowU %= this.divisionU;
-				this.untilUpdate %= this.frequency;
+				if(this.nowU >= this.divisionU){
+					this.nowU = 0;
+					this.nowVRange++;
+					this.nowVRange %= this.useVRange;
+				}
 			} else {
-				++this.untilUpdate;
 				this.nowU -= Math.floor(this.untilUpdate / this.frequency);
 				if (this.nowU < 0) {
 					this.nowU = this.divisionU - 1;
+					this.nowVRange++;
+					this.nowVRange %= this.useVRange;
 				}
-				this.untilUpdate %= this.frequency;
 			}
+			this.untilUpdate %= this.frequency;
 		}
 	}
 }
@@ -375,6 +421,9 @@ class arrow {
 		this.hitornot = false;
 		this.startP = new Point(invalidArea, invalidArea);
 		this.trajectoryLine = new Line(this.startP, this.startP);
+		this.angle = 0;
+		this.imgangleU = 0;
+		this.imgangleV = 0;
 		this.animation = new animation(arrowAnimePreset, invalidArea, invalidArea);
 		this.hitEnemy = false;
 		this.whoHit = -1;
@@ -721,17 +770,22 @@ let uiDisp = {
 	innerTimer: 0,
 	cursorSwitchFreq: 6,	// メッセージ送り待ち中に表示されるカーソルのアニメーションの切り替わるフレーム数
 	messageSpeed: messageSpeed_slow,
-	messageAllEnd: false,
+	message: "",
 	textReceiver: "",
 	whoSpeak: "",
+	setSpeaker: function(_name){
+		this.whoSpeak = _name;
+	},
 	fontSize: 22,
 	lineHeight: 1.1,
+	eventResumeDependOnMeesage: false,
 	messageFinish: false,
-	messageRowPick: 0,
-	messageLinePick: 0,
-	messageClicked: false,
+	messageCharPicker: 0,
+	messageOnClick: false,
 	clickupChecker: false,
-	messageDisplay: function (ctx, x, y, w, h, message) {
+	messageDisplay: function (ctx, x, y, w, h, messageEndCursorSwitch, _eventResumeDependOnMeesage, _message) {
+		this.message = _message;
+		this.eventResumeDependOnMeesage = _eventResumeDependOnMeesage;
 		let img = document.getElementById("statusicon");
 
 		// メッセージウィンドウ
@@ -838,95 +892,135 @@ let uiDisp = {
 			uiTileSize,
 		);
 
+		// 発話者が有効の場合発話者を表示
+		if(this.whoSpeak !=""){
+			let spk_x = x ;
+			let spk_y = y - this.fontSize * 2 + uiTileSize;
+			ctx.drawImage(
+				img,
+				uiTileSize * 2,
+				uiTileSize * 2,
+				uiTileSize,
+				uiTileSize,
+				spk_x + 2,
+				spk_y + 2,
+				(this.whoSpeak.length + 1) * this.fontSize - 4,
+				this.fontSize * 2 - 4
+			);
+			ctx.globalAlpha = 1.0;
+			ctx.drawImage(
+				img,
+				uiTileSize * 2,
+				uiTileSize * 0,
+				uiTileSize / 2,
+				uiTileSize / 2,
+				spk_x,
+				spk_y,
+				uiTileSize,
+				uiTileSize
+			);
+			ctx.drawImage(
+				img,
+				uiTileSize * 2.5,
+				uiTileSize * 0,
+				uiTileSize / 2,
+				uiTileSize / 2,
+				spk_x + (this.whoSpeak.length + 1) * this.fontSize - uiTileSize,
+				spk_y,
+				uiTileSize,
+				uiTileSize
+			);
+			ctx.drawImage(
+				img,
+				uiTileSize * 2,
+				uiTileSize * 0.5,
+				uiTileSize / 2,
+				uiTileSize / 2,
+				spk_x,
+				spk_y + this.fontSize * 2 - uiTileSize,
+				uiTileSize,
+				uiTileSize
+			);
+			ctx.drawImage(
+				img,
+				uiTileSize * 2.5,
+				uiTileSize * 0.5,
+				uiTileSize / 2,
+				uiTileSize / 2,
+				spk_x + (this.whoSpeak.length + 1) * this.fontSize - uiTileSize,
+				spk_y + this.fontSize * 2 - uiTileSize,
+				uiTileSize,
+				uiTileSize
+			);
+	
+			ctx.drawImage(
+				img,
+				uiTileSize * 3,
+				uiTileSize * 0,
+				uiTileSize / 2,
+				uiTileSize / 2,
+				spk_x,
+				spk_y + uiTileSize,
+				uiTileSize,
+				this.fontSize * 2 - 2 * uiTileSize,
+			);
+			ctx.drawImage(
+				img,
+				uiTileSize * 3.5,
+				uiTileSize * 0,
+				uiTileSize / 2,
+				uiTileSize / 2,
+				spk_x + (this.whoSpeak.length + 1) * this.fontSize - uiTileSize,
+				spk_y + uiTileSize,
+				uiTileSize,
+				this.fontSize * 2 - 2 * uiTileSize,
+			);
+			ctx.drawImage(
+				img,
+				uiTileSize * 3.5,
+				uiTileSize * 0.5,
+				uiTileSize / 2,
+				uiTileSize / 2,
+				spk_x + uiTileSize,
+				spk_y,
+				(this.whoSpeak.length + 1) * this.fontSize - 2 * uiTileSize,
+				uiTileSize,
+			);
+			ctx.drawImage(
+				img,
+				uiTileSize * 3,
+				uiTileSize * 0.5,
+				uiTileSize / 2,
+				uiTileSize / 2,
+				spk_x + uiTileSize,
+				spk_y + this.fontSize * 2  - uiTileSize,
+				(this.whoSpeak.length + 1) * this.fontSize - 2 * uiTileSize,
+				uiTileSize,
+			);
+			ctx.font="bold " + this.fontSize +"px serif";
+			ctx.textBaseline="top";
+			ctx.fillStyle = "white";
+			ctx.fillText(
+				this.whoSpeak,
+				spk_x + uiTileSize / 1.5,
+				spk_y + this.fontSize * 0.4,
+			);
+			ctx.fillStyle = "black";						
+
+		}
 		// メッセージ送り待ちカーソル
 		if(this.messageFinish){
 			ctx.drawImage(
 				img,
 				uiTileSize * 2 + (uiTileSize / 2 * Math.floor((this.innerTimer % (this.cursorSwitchFreq * 4)) / this.cursorSwitchFreq)),
-				this.messageAllEnd ? uiTileSize * 1.5 : uiTileSize * 1,
+				messageEndCursorSwitch ? uiTileSize * 1.5 : uiTileSize * 1,
 				uiTileSize / 2,
 				uiTileSize / 2,
-				this.messageAllEnd ? x + w * 0.8 : x + ( w / 2 ) - ( uiTileSize / 2 ),
+				messageEndCursorSwitch ? x + w * 0.8 : x + ( w / 2 ) - ( uiTileSize / 2 ),
 				y + h - uiTileSize,
 				uiTileSize,
 				uiTileSize,
 			);
-		}
-
-		if(this.clickupChecker){
-			this.messageClicked =false;
-			this.clickupChecker =false;
-		}		
-		// ウィンドウ内に表示するテキスト
-		// サウンドに関して　メッセージ送り音は文字が一文字表示されるごとに鳴らす必要があるのでインスタンスから鳴らすが
-		// 　　　　　　　　　決定音(pushEnter)はクリック側に制御があるので鳴らす許可のブール値を変えるだけでいい
-		if(this.messageLinePick < message.length){
-			if(message[this.messageLinePick].charAt(0) == "\t"){
-				console.log("test1 t");
-				this.messageLinePick++;
-			}else{
-				if(!this.messageFinish){
-					if(this.messageClicked == false){
-						if(clicknow){
-							this.textReceiver = "";
-							for(let i = 0 ; i < message[this.messageLinePick].length ;i++){
-								this.textReceiver += (message[this.messageLinePick].charAt(i));
-							}
-							if(this.messageLinePick >= message.length - 1){
-								this.messageAllEnd = true;
-							}
-							soundStartRegardlessInput(SE_message)
-							sound_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
-							this.messageClicked = true;
-							this.messageFinish = true;
-						}
-					}
-					if(!this.messageFinish){
-						sound_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
-						if(this.innerTimer % this.messageSpeed == 0 ){
-							if(this.messageRowPick != message[this.messageLinePick].length){
-								if(message[this.messageLinePick].charAt(this.messageRowPick) != "　"){
-									soundStartRegardlessInput(SE_message)
-								}
-								/*if(message[this.messageLinePick].charAt(this.messageRowPick) == "\t"){
-									console.log("test1 t");
-								}
-								if(message[this.messageLinePick].charAt(this.messageRowPick) == "\v"){
-									console.log("test2 v");
-								}
-								if(message[this.messageLinePick].charAt(this.messageRowPick) == "\r"){
-									console.log("test3 r");
-								}
-								if(message[this.messageLinePick].charAt(this.messageRowPick) == "\f"){
-									console.log("test4 f");
-								}*/
-								this.textReceiver += (message[this.messageLinePick].charAt(this.messageRowPick));
-								this.messageRowPick++;
-							}else{
-							if(this.messageLinePick >= message.length - 1){
-									this.messageAllEnd = true;
-								}
-								sound_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
-								this.messageFinish = true;
-							}
-						}
-					}
-				}else{
-					if(this.messageClicked == false){
-						if(clicknow){
-							this.messageLinePick++;
-							this.messageRowPick = 0;
-							this.messageFinish = false;
-							this.textReceiver = "";
-							if(this.messageLinePick >= message.length){
-								this.messageAllEnd = false;
-								this.messageLinePick = 0;
-							}
-							this.messageClicked = true;
-						}
-					}
-				}
-			}
 		}
 
 		// テキストを画面に表示する処理
@@ -944,12 +1038,82 @@ let uiDisp = {
 			);
 			ctx.fillStyle = "black";						
 		}
-		this.innerTimer++;
+	},
+	
+	// テキストの制御
+	messageController: function(){
+		if(this.message != ""){
+			if(this.clickupChecker){
+				this.messageOnClick =false;
+				this.clickupChecker =false;
+			}		
+			// ウィンドウ内に表示するテキスト
+			// サウンドに関して　メッセージ送り音は文字が一文字表示されるごとに鳴らす必要があるのでインスタンスから鳴らすが
+			// 　　　　　　　　　決定音(pushEnter)はクリック側に制御があるので鳴らす許可のブール値を変えるだけでいい
+			if(!this.messageFinish){
+				if(!this.messageOnClick){
+					if(clicknow){
+						this.textReceiver = "";
+						this.textReceiver = (this.message.slice(0));
+						soundStartRegardlessInput(SE_message)
+						sound_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
+						this.messageOnClick = true;
+						this.messageFinish = true;
+					}
+				}
+				if(!this.messageFinish){
+					sound_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
+					if(this.innerTimer % this.messageSpeed == 0 ){
+						if(this.messageCharPicker != this.message.length){
+							if(this.message.charAt(this.messageCharPicker) != "　"){
+								soundStartRegardlessInput(SE_message)
+							}
+							/*if(message.charAt(this.messageCharPicker) == "\t"){
+								console.log("test1 t");
+							}
+							if(message.charAt(this.messageCharPicker) == "\v"){
+								console.log("test2 v");
+							}
+							if(message.charAt(this.messageCharPicker) == "\r"){
+								console.log("test3 r");
+							}
+							if(message.charAt(this.messageCharPicker) == "\f"){
+								console.log("test4 f");
+							}*/
+							this.textReceiver = (this.message.slice(0,this.messageCharPicker));
+							this.messageCharPicker++;
+						}else{
+							sound_set[pickSE(SE_pushEnter)][sound_soundOn] = true;
+							this.messageFinish = true;
+						}
+					}
+				}
+			}else{
+				if(this.messageOnClick == false){
+					if(clicknow){
+						this.messageCharPicker = 0;
+						eventResumeOk = true;
+						this.message = "";
+						this.textReceiver = "";
+						this.innerTimer = 0;
+						this.messageFinish = false;
+						this.messageOnClick = true;
+					}
+				}
+			}
+			this.innerTimer++;
+		}else{
+			sound_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
+
+		}
 	},
 	clickupCheck: function(){
 		this.clickupChecker = true;
 	},
-
+	messageClear: function(){
+		this.message = "";
+	},
+	
 	// バトル開始の合図(ready...)を画面に表示
 	readyTimer: 0,
 	startTimer: 0,
@@ -1103,7 +1267,58 @@ let uiDisp = {
 	finishTimerReset: function(){
 		this.finishTimer = 0;
 		this.winLoseSE = false;
-	}
+	},
+
+	/*
+	drawTrajectorySpeed: new Vec(0, 0),
+	drawTrajectoryStartP: new Point(invalidArea, invalidArea),
+	drawTrajectoryLine: new Line(this.drawTrajectoryStartP, this.drawTrajectoryStartP),
+	drawTrajectoryAngle: 0,
+	*/
+
+	drawTrajectory: function(p, op, pow, ctx) {
+		let drawTrajectoryStartP = new Point(op.x, op.y);
+		let drawTrajectoryAngle = Math.atan2((p.y - op.y), (p.x - op.x));
+		let drawTrajectoryCoefficient = Math.round(pow / 100);
+		if(drawTrajectoryCoefficient == 0){
+			drawTrajectoryCoefficient = 1;
+		}
+		let speedX = (pow * Math.cos(drawTrajectoryAngle));
+		let speedY = (pow * Math.sin(drawTrajectoryAngle));
+		let drawTrajectoryLine = new Line(drawTrajectoryStartP, drawTrajectoryStartP);
+		ctx.lineWidth = 8;
+		ctx.globalAlpha = 0.1;
+		ctx.beginPath();
+		ctx.moveTo(op.x, op.y);
+		ctx.lineTo(op.x, op.y);
+		for(let i = 0 ; i < 100 ; i++){
+			ctx.stroke();
+			ctx.globalAlpha += 0.01;
+			let speed = new Vec(speedX , speedY);
+			ctx.lineWidth = 4;
+			for(let j = 1 ; j < drawTrajectoryCoefficient ; j++){
+				ctx.globalAlpha += 0.01;
+				ctx.beginPath();
+				ctx.moveTo(
+					drawTrajectoryLine.start_p.x + speedX * ((j) / drawTrajectoryCoefficient),
+					drawTrajectoryLine.start_p.y + speedY * ((j) / drawTrajectoryCoefficient)
+				);
+				ctx.lineTo(
+					drawTrajectoryLine.start_p.x + speedX * ((j) / drawTrajectoryCoefficient),
+					drawTrajectoryLine.start_p.y + speedY * ((j) / drawTrajectoryCoefficient)
+				);
+				ctx.stroke();
+			}
+			drawTrajectoryLine.startToEnd();
+			drawTrajectoryLine.moveEnd(speed);
+			speedY = speedY + gravity;
+			ctx.lineWidth = 8;
+			ctx.beginPath();
+			ctx.moveTo(drawTrajectoryLine.end_p.x, drawTrajectoryLine.end_p.y);
+			ctx.lineTo(drawTrajectoryLine.end_p.x, drawTrajectoryLine.end_p.y);
+		}
+		ctx.globalAlpha = 1.0;
+	},
 
 }
 
@@ -1224,87 +1439,228 @@ function enemySet(_stageNum){
 // 初期化処理。addEventListener等マウス操作入力の開始など
 function Initialization(){
 	sound_set[pickSE(SE_gameStart)][sound_soundOn] = true;
-	document.getElementById("field").addEventListener(
-		"mousemove",
-		function (event) {
-			if(InputOk){
-				mouseP.setPoint(event.offsetX, event.offsetY);
+	document.oncontextmenu = () => {
+		return false;
+	};
+	if(device == device_PC){
+		// パソコン用設定
+		document.getElementById("field").addEventListener(
+			"mousemove",
+			function (event) {
+				if(InputOk){
+					mouseP.setPoint(event.offsetX, event.offsetY);
+				}
 			}
-		}
-	);
-	document.getElementById("field").addEventListener(
-		"mousedown",
-		function () {
-			if(InputOk){
-				clicknow = true;
-				if(sound_array[pickSE(SE_pushEnter)]){
-					if(sound_set[pickSE(SE_pushEnter)][sound_soundOn]){
-						sound_array[pickSE(SE_pushEnter)].playFromStart();
-						sound_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
+		);
+		document.getElementById("field").addEventListener(
+			"mousedown",
+			function (event) {
+				if(InputOk){
+					if(event.button == 0 ){
+						console.log("click!")
+						clicknow = true;
+						if(sound_array[pickSE(SE_pushEnter)]){
+							if(sound_set[pickSE(SE_pushEnter)][sound_soundOn]){
+								sound_array[pickSE(SE_pushEnter)].playFromStart();
+								sound_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
+							}
+						}
+	
+					}
+				}else{
+					clicknow = false;
+				}
+			}
+		);
+		document.getElementById("field").addEventListener(
+			"mouseup",
+			function (event) {
+				if(event.button == 0 ){
+					clicknow = false;
+					if(InputOk){
+						clickup = true;
 					}
 				}
 			}
-		}
-	);
-	document.getElementById("field").addEventListener(
-		"mouseup",
-		function () {
-			clicknow = false;
-			if(InputOk){
-				clickup = true;
+		);
+		document.getElementById("field").addEventListener(
+			"mouseenter",
+			function () {
+				if(InputOk){
+					document.body.style.cursor = "crosshair";
+					reticleOn = true;
+				}
 			}
-		}
-	);
-	document.getElementById("field").addEventListener(
-		"mouseenter",
-		function () {
-				document.body.style.cursor = "crosshair";
-				reticleOn = true;
-		}
-	);
-	document.getElementById("field").addEventListener(
-		"mouseleave",
-		function () {
-				document.body.style.cursor = "default";
-				reticleOn = false;
-		}
-	);
+		);
+		document.getElementById("field").addEventListener(
+			"mouseleave",
+			function () {
+				if(InputOk){
+					document.body.style.cursor = "default";
+					reticleOn = false;
+				}
+			}
+		);
+	}else if(device == device_smartPhone){
+		// スマホ用設定
+		document.getElementById("field").addEventListener(
+			"touchstart",
+			function (event) {
+				if(InputOk){
+					let touchObject = event.changedTouches[0] ;
+					let clientRect = document.getElementById("field").getBoundingClientRect();
+					mouseP.setPoint(touchObject.clientX - clientRect.left, touchObject.clientY - clientRect.top);
+
+					reticleOn = true;
+					console.log("touch!")
+					clicknow = true;
+					if(sound_array[pickSE(SE_pushEnter)]){
+						if(sound_set[pickSE(SE_pushEnter)][sound_soundOn]){
+							sound_array[pickSE(SE_pushEnter)].playFromStart();
+							sound_set[pickSE(SE_pushEnter)][sound_soundOn] = false;
+						}
+					}
+
+				}
+			}
+		);
+		document.getElementById("field").addEventListener(
+			"touchmove",
+			function (event) {
+				if(InputOk){
+					event.preventDefault();
+					let touchObject = event.changedTouches[0] ;
+					let clientRect = document.getElementById("field").getBoundingClientRect();
+					mouseP.setPoint(touchObject.clientX - clientRect.left, touchObject.clientY - clientRect.top);
+				}
+			}
+		);
+		document.getElementById("field").addEventListener(
+			"touchend",
+			function () {
+				clicknow = false;
+				if(InputOk){
+					clickup = true;
+
+					reticleOn = false;
+
+				}
+			}
+		);
+
+	}
+
 	document.body.addEventListener(
 		"click",
 		function(){
-			if(audioswitch == false){
-				for(let i = 0 ; i < sound_set.length ; i ++){
-					sound_array.push(new soundMake(
-						sound_set[i][sound_idTag],
-						sound_set[i][sound_isLoop],
-						sound_set[i][sound_volume],
-						sound_set[i][sound_mute],
-						sound_set[i][sound_loopTiming],
-						sound_set[i][sound_loopBackTime]
+			if(InputOk){
+				if(audioswitch == false){
+					for(let i = 0 ; i < sound_set.length ; i ++){
+						sound_array.push(new soundMake(
+							sound_set[i][sound_idTag],
+							sound_set[i][sound_isLoop],
+							sound_set[i][sound_volume],
+							sound_set[i][sound_mute],
+							sound_set[i][sound_loopTiming],
+							sound_set[i][sound_loopBackTime]
+							)
 						)
-					)
-					if(sound_array[i].sound.loop){
-						sound_array[i].playFromStart();
+						if(sound_array[i].sound.loop){
+							sound_array[i].playFromStart();
+						}
+						console.log(i + sound_array[i].idTag + " loaded");
 					}
-					console.log(i + sound_array[i].idTag + " loaded");
+					if(browser == browser_Firefox){	// 無音対策
+						SE_firefox = document.getElementById("SE_firefox");
+						SE_firefox.loop = true;
+						SE_firefox.volume = 0.0000001;
+						SE_firefox.play();
+					}
+					console.log("sound loaded");
+					audioswitch = true;
 				}
-				if(browser == browser_Firefox){	// 無音対策
-					SE_firefox = document.getElementById("SE_firefox");
-					SE_firefox.loop = true;
-					SE_firefox.volume = 0.0000001;
-					SE_firefox.play();
+				if(sound_set[pickSE(SE_gameStart)][sound_soundOn]){
+					if(sound_array[pickSE(SE_gameStart)]){
+						sound_array[pickSE(SE_gameStart)].playFromStart();
+						sound_set[pickSE(SE_gameStart)][sound_soundOn] = false;
+					}
 				}
-				console.log("sound loaded");
-				audioswitch = true;
 			}
-			if(sound_set[pickSE(SE_gameStart)][sound_soundOn]){
-				if(sound_array[pickSE(SE_gameStart)]){
-					sound_array[pickSE(SE_gameStart)].playFromStart();
-					sound_set[pickSE(SE_gameStart)][sound_soundOn] = false;
-				}
-			}
-
 		}
 	)
 
 }
+
+function clickOnBehavior(){
+	aimNow = false;
+	if (clicknow) {
+		if(gameState == gState_title){
+			if(gameClicked > 0){
+				if(sound_array[pickSE(SE_gameStart)]){
+					sound_array[pickSE(SE_gameStart)].sound.volume = SEVolume1;
+					gameClicked++;
+				}
+			}
+		}else if(gameState == gState_intermission){
+			if(eventResumeOk){
+				eventTimeLine++;
+				eventResumeOk = false;
+			}
+
+		}else if(gameState == gState_battle){
+			if(battleStart){
+				if(battleWinOrLost == 0){
+					aimNow = true;
+					++chargevalue;
+					charge = chargevalue * chargevalue * 0.1 + chargeDefaultValue;
+					if (charge >= chargeMaxValue) {
+						charge = chargeMaxValue;
+					}
+					//照準の不透明度、大きさの変化<
+					alpha = charge / 400;
+					aimCircle = charge / 10;
+					//照準の不透明度、大きさの変化>
+				}
+			}
+		}else if(gameState == gState_afterBattle){
+
+		}
+	}
+}
+
+function clickUpBehavior(){
+	if (clickup) {
+		if(gameState == gState_title){
+			if(gameClicked <= 0){
+				gameClicked++;
+				sound_set[pickSE(SE_gameStart)][sound_soundOn] = true;
+			}
+		}else if(gameState == gState_intermission){
+
+		}else if(gameState == gState_battle){
+			if(battleStart){
+				if (circleColCircle(mouseP, 1, archerCircle.p, archerCircle.r)) {
+					soundStartRegardlessInput(SE_reload);
+					arrowRemain = arrowUsage;
+				}else {
+					soundStartRegardlessInput(SE_arrowShoot);
+					if (arrowRemain > 0) {
+						soundStartRegardlessInput(SE_arrowFly);
+						arrowArray[useArrowIndex++].shoot(mouseP, archerCircle.p, charge);
+						useArrowIndex %= arrowObject;
+						--arrowRemain;
+					}
+				}
+			}
+			charge = chargeDefaultValue;
+			chargevalue = 0;
+			alpha = 0.3;
+			aimCircle = 30;
+		}else if(gameState == gState_afterBattle){
+
+		}
+		uiDisp.clickupCheck();
+		clickup = false;
+	}
+}
+

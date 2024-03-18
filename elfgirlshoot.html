@@ -2,7 +2,9 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>ELfGearShoot</title>
+		<meta http-equiv="Pragma" content="no-cache">
+		<meta http-equiv="Cache-Control" content="no-store">
+		<title>ELfGirlShoot</title>
 		<style>
 			canvas {
 				position: relative;
@@ -10,12 +12,17 @@
 				margin-right: -50%;
 				transform: translate(-50%);
 			}
+			html,body {
+				touch-action: manipulation;
+				overflow: hidden;
+				user-select: none;
+			}
 		</style>
 		<script src="functionset.js"></script>
 		<script src="stage00.js"></script>
 		<script src="mainLoop.js"></script>
 		<script>
-			const UPDATE_LOAD_COEFF = 0.7;
+			const UPDATE_LOAD_COEFF = 0.5;
 
 			let targetInterval = 1000 / fps;
 			let prevTime = Date.now() - targetInterval;
@@ -68,13 +75,18 @@
 		<div id="mousepointtag"></div>
 		<div id="arrowtag"></div>
 		<div id="timetag"></div>
-		<div id="explanation">発射ポイント(ぐるぐる回る矢)をクリックすると矢を補充できるよ。敵は２発で倒せるよ 音が鳴ります。気を付けてね</div>
-		<img id="testimg" src="主人公シャラライメージ.png" style="display: none;">
+		<div id="explanation">
+			ゲームを開始するときはゲーム画面を二回クリックしてね(※音が鳴ります。気を付けてね)<br>
+			エルフの女の子をクリックすると矢を補充できるよ。ちなみに敵は２発で倒せるよ<br>
+			矢を発射するときクリックを長押ししてから離すと飛距離が伸びるよ<br>
+			会話パートは画面をクリックすると先に進むよ</div>
 		<img class="dotpic" id="arrowimg" src="arrow.png" style="display: none;">
 		<img class="dotpic" id="numberimg" src="p192x192samplematerial.png" style="display: none;">
 		<img class="dotpic" id="statusicon" src="statusicon.png" style="display: none;">
 		<img class="dotpic" id="elffaceimg" src="elffaceimg.png" style="display: none;">
 		<img class="dotpic" id="backgroundimg" src="stage00_chip.png" style="display: none;">
+		<img class="dotpic" id="shalalaimg" src="shalalaimg.png" style="display: none;">
+		<img class="dotpic" id="louyaimg" src="louyaimg.png" style="display: none;">
 		<audio id="BGM_storyBeginning" src="BGM\ピコリンチョ.mp3" ></audio>
 		<audio id="BGM_battle" src="BGM\おとぼけ精霊のお祭り.mp3" ></audio>
 		<audio id="SE_message" src="sound\会話11_単音.mp3" ></audio>
