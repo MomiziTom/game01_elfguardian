@@ -2,6 +2,8 @@ const numberAnimePreset = new animePreset("numberimg", 4, 4, 16);
 const arrowAnimePreset = new animePreset("arrowimg", 9, 4, 8);
 const shalalaAnimePreset = new animePreset("shalalaimg", 4, 5, 16);
 const louyaAnimePreset = new animePreset("louyaimg", 4, 5, 4);
+const goblinAnimePreset = new animePreset("goblinimg", 4, 4, 8);
+const harpyAnimePreset = new animePreset("harpyimg", 4, 4, 8);
 
 let nowPlayingBGM = "";
 let SEVolume1 = 0.05;	// 通常音量
@@ -73,10 +75,10 @@ let sound_array = [];
 let audioswitch = false;
 
 const goblin = new enemyTypePreset(
-	30,
+	45,
 	2,
 	enemyMove_str,
-	numberAnimePreset,
+	goblinAnimePreset,
 	2,	//2
 	80,
 	10,
@@ -86,10 +88,10 @@ const goblin = new enemyTypePreset(
 );
 
 const goblinJump = new enemyTypePreset(
-	30,
+	45,
 	2,
 	enemyMove_jump,
-	numberAnimePreset,
+	goblinAnimePreset,
 	1.5,	//1.5
 	80,
 	5,
@@ -98,11 +100,11 @@ const goblinJump = new enemyTypePreset(
 	aim_off
 );
 
-const goblinAim = new enemyTypePreset(
+const harpyAim = new enemyTypePreset(
 	30,
 	2,
 	enemyMove_strQuadra,
-	numberAnimePreset,
+	harpyAnimePreset,
 	0.5,
 	0.05,
 	10,
@@ -197,8 +199,8 @@ const scene1 = [
 		"大変大変！！　　　　　　　　　　　　　　　　　　　　　　　　　\n遠くから悪いゴブリンの群れがいっぱいやってきたよ！！");
 		louya.point.x = 500 + Math.random() * 16-8;
 		louya.setTileV(0);
-		louya.setFrequency(16)
-		louya.setUseVRange(1)
+		louya.setFrequency(16);
+		louya.setUseVRange(1);
 },
 	(ctx) => {
 		louya.point.x = 500 + Math.random() * 16-8;

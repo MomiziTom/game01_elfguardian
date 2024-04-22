@@ -1431,7 +1431,7 @@ function enemySet(_stageNum){
 	}
 	if(_stageNum == 1){
 		for(let i = 0 ; i < 10 ; i++){
-			enemyArray.push(new enemyCircle( canvasW + 50 , (i * 60) % canvasH, i * 60 + 40, 0, goblinAim));
+			enemyArray.push(new enemyCircle( canvasW + 50 , (i * 60) % canvasH, i * 60 + 40, 0, harpyAim));
 		}
 	}
 }
