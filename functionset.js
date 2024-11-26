@@ -1438,13 +1438,14 @@ function enemySet(_stageNum){
 
 // 初期化処理。addEventListener等マウス操作入力の開始など
 function Initialization(){
+	const field = document.getElementById("field")
 	sound_set[pickSE(SE_gameStart)][sound_soundOn] = true;
 	document.oncontextmenu = () => {
 		return false;
 	};
 	if(device == device_PC){
 		// パソコン用設定
-		document.getElementById("field").addEventListener(
+		field.addEventListener(
 			"mousemove",
 			function (event) {
 				if(InputOk){
@@ -1452,7 +1453,7 @@ function Initialization(){
 				}
 			}
 		);
-		document.getElementById("field").addEventListener(
+		field.addEventListener(
 			"mousedown",
 			function (event) {
 				if(InputOk){
@@ -1472,7 +1473,7 @@ function Initialization(){
 				}
 			}
 		);
-		document.getElementById("field").addEventListener(
+		field.addEventListener(
 			"mouseup",
 			function (event) {
 				if(event.button == 0 ){
@@ -1483,7 +1484,7 @@ function Initialization(){
 				}
 			}
 		);
-		document.getElementById("field").addEventListener(
+		field.addEventListener(
 			"mouseenter",
 			function () {
 				if(InputOk){
@@ -1492,7 +1493,7 @@ function Initialization(){
 				}
 			}
 		);
-		document.getElementById("field").addEventListener(
+		field.addEventListener(
 			"mouseleave",
 			function () {
 				if(InputOk){
@@ -1503,14 +1504,17 @@ function Initialization(){
 		);
 	}else if(device == device_smartPhone){
 		// スマホ用設定
-		document.getElementById("field").addEventListener(
+		field.addEventListener(
 			"touchstart",
 			function (event) {
 				if(InputOk){
 					let touchObject = event.changedTouches[0] ;
-					let clientRect = document.getElementById("field").getBoundingClientRect();
+					let clientRect = field.getBoundingClientRect();
 					mouseP.setPoint(touchObject.clientX - clientRect.left, touchObject.clientY - clientRect.top);
-
+					if(window.innerWidth < 800){
+						mouseP.x *=2;
+						mouseP.y *=2;
+					}
 					reticleOn = true;
 					console.log("touch!")
 					clicknow = true;
@@ -1524,18 +1528,22 @@ function Initialization(){
 				}
 			}
 		);
-		document.getElementById("field").addEventListener(
+		field.addEventListener(
 			"touchmove",
 			function (event) {
 				if(InputOk){
 					event.preventDefault();
 					let touchObject = event.changedTouches[0] ;
-					let clientRect = document.getElementById("field").getBoundingClientRect();
+					let clientRect = field.getBoundingClientRect();
 					mouseP.setPoint(touchObject.clientX - clientRect.left, touchObject.clientY - clientRect.top);
+					if(window.innerWidth < 800){
+						mouseP.x *=2;
+						mouseP.y *=2;
+					}	
 				}
 			}
 		);
-		document.getElementById("field").addEventListener(
+		field.addEventListener(
 			"touchend",
 			function () {
 				clicknow = false;
